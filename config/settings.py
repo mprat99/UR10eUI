@@ -1,0 +1,25 @@
+"""Configuration settings for the UR10e UI application."""
+
+# Network settings
+TCP_HOST = "localhost"
+TCP_PORT = 30003  # Default UR robot port
+
+# UI settings
+WINDOW_TITLE = "UR10e Control Interface"
+BACKGROUND_COLOR = "#000000"
+
+# Ring animation settings
+RING_COLOR = (0, 255, 0)  # Default green color
+RING_FREQUENCY = 3000     # New ring every 3000ms
+RING_LIFETIME = 6000      # Ring lifetime in ms
+RING_SPEED = 0.05        # Expansion speed in pixels per ms
+RING_MAX_THICKNESS = 1000.0  # Maximum thickness in pixels
+RING_FADE_IN = 0.1       # Fraction of lifetime to fade in
+RING_FADE_OUT = 0.9      # Fraction of lifetime to fade out
+
+# Window settings
+WINDOW_ASPECT_RATIO = 9/4  # Height to width ratio (9 times taller than wider)
+
+# Section widget settings
+SECTION_ASPECT_RATIO = 3/4  # Height to width ratio for section widgets
+SECTION_MARGIN = 20         # Margin between sections in pixels 
