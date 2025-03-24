@@ -1,13 +1,16 @@
 from PyQt6.QtWidgets import QWidget, QSpacerItem, QSizePolicy, QFrame, QStackedLayout, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtSvgWidgets import QSvgWidget
+from PyQt6.QtSvg import QSvgRenderer 
+from PyQt6.QtGui import QPainter, QPixmap, QFont
+from PyQt6.QtCore import QRectF, QPointF, QTimer
 
 class Screen0(QWidget):
     """Screen 0 with a 2x2 grid of widgets, centered properly with fixed spacing."""
     def __init__(self):
         super().__init__()
 
-        self.setStyleSheet("background-color: rgba(0, 0, 0, 0); border: 1px solid red;")
+        self.setStyleSheet("background-color: rgba(0, 0, 0, 0); border: 0px solid red;")
 
         # Outer Layout: Centers the grid itself
         outer_layout = QHBoxLayout()
@@ -16,88 +19,143 @@ class Screen0(QWidget):
         # Grid Layout (Holds widgets in a 2x2 structure)
         grid_layout = QGridLayout()
         grid_layout.setContentsMargins(0, 0, 0, 0)  # Remove extra margins
-        grid_layout.setVerticalSpacing(20)  # Fixed spacing between widgets
-        grid_layout.setHorizontalSpacing(40)  # Fixed spacing between widgets
+        grid_layout.setVerticalSpacing(10)  # Fixed spacing between widgets
+        grid_layout.setHorizontalSpacing(20)  # Fixed spacing between widgets
 
         grid_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Center everything
-
+        
         # Add widgets to the grid
-        grid_layout.addWidget(LiveStat(), 0, 0)
-        grid_layout.addWidget(LiveStat(), 0, 1)
-        grid_layout.addWidget(LiveStat(), 1, 0)
-        grid_layout.addWidget(LiveStat(), 1, 1)
+        # grid_layout.addWidget(LiveStat(), 0, 0)
+        # grid_layout.addWidget(LiveStat(), 0, 1)
+        # grid_layout.addWidget(LiveStat(), 1, 0)
+        # grid_layout.addWidget(LiveStat(), 1, 1)
+
+        # Suppose you have 4 stats to display
+        # Provide your actual SVG path, value text, and label text
+        self.widget1 = LiveStatsWidget("assets/live_speed_fast.svg", "20", "Label1")
+        self.widget2 = LiveStatsWidget("assets/live_speed_fast.svg", "4220", "Label2")
+        self.widget3 = LiveStatsWidget("assets/live_speed_fast.svg", "220", "Label3")
+        self.widget4 = LiveStatsWidget("assets/live_speed_fast.svg", "0", "Label4")
+
+        grid_layout.addWidget(self.widget1, 0, 0)
+        grid_layout.addWidget(self.widget2, 0, 1)
+        grid_layout.addWidget(self.widget3, 1, 0)
+        grid_layout.addWidget(self.widget4, 1, 1)
+        self.widget1.setMaximumWidth(200)  # Adjust max width
+        self.widget2.setMaximumWidth(200)
+        self.widget3.setMaximumWidth(200)
+        self.widget4.setMaximumWidth(200)
+        # widget1.setMinimumWidth(50)  # Adjust max width
+        # widget2.setMinimumWidth(50)
+        # widget3.setMinimumWidth(50)
+        # widget4.setMinimumWidth(50)
+
+        self.widget1.update_content(value_text="200")
 
         # Wrap the grid inside the outer layout
         outer_layout.addLayout(grid_layout)
 
         # Apply the main layout
         self.setLayout(outer_layout)
-
-class LiveStat(QWidget):
-    def __init__(self, label_offset_ratio=0.3):
-        """
-        :param label_offset_ratio: Adjusts vertical position relative to SVG center (0 = center, 0.2 = slightly lower)
-        """
-        super().__init__()
-
-        self.label_offset_ratio = label_offset_ratio  # Store desired offset ratio
-         # Stacked layout to overlay elements
-        self.stacked_layout = QStackedLayout(self)
-        self.stacked_layout.setStackingMode(QStackedLayout.StackingMode.StackAll)
-
-        # **Container for the SVG** to keep it centered
-        svg_container = QWidget()
-        svg_layout = QVBoxLayout(svg_container)
-        svg_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        # **Base layer: SVG widget**
-        self.svg_widget = QSvgWidget("assets/live_speed_fast.svg")
-        self.svg_widget.setStyleSheet("background: transparent;")
-        svg_layout.addWidget(self.svg_widget)
-
-        self.stacked_layout.addWidget(svg_container)
-
-        # **Container for the label** to center it properly inside the SVG
-        label_container = QWidget()
-        label_layout = QVBoxLayout(label_container)
-        label_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        # **Spacer to adjust vertical position dynamically**
-        self.spacer = QSpacerItem(20, 20, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
-        label_layout.addItem(self.spacer)
-
-        self.label = QLabel("40")
-        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.label.setStyleSheet("color: white; background: transparent;")
-
-        label_layout.addWidget(self.label)
-        self.stacked_layout.addWidget(label_container)
+        # --- Rotation timer ---
+        self.rotation_timer = QTimer(self)
+        self.rotation_timer.timeout.connect(self.increment_rotation)
+        self.rotation_timer.start(16)  # ~60 FPS
+        self.increment_rotation()
 
     def resizeEvent(self, event):
-        """Override resizeEvent to handle scaling aspect ratio."""
-        super().resizeEvent(event)
+        """Update max width of widgets dynamically based on window size."""
+        window_height = self.height()
+        max_widget_width = int(window_height * 0.7)  # Each widget can take up to 20% of the window width
 
-        width = self.width()
-        height = self.height()
+        for widget in [self.widget1, self.widget2, self.widget3, self.widget4]:
+            widget.setMaximumWidth(max_widget_width)
 
-        # Maintain SVG aspect ratio
-        svg_size = self.svg_widget.renderer().defaultSize()
-        aspect_ratio = svg_size.width() / svg_size.height()
+        super().resizeEvent(event)  # Call parent resizeEvent
 
-        if width / height > aspect_ratio:
-            new_height = height
-            new_width = int(new_height * aspect_ratio)
+    def increment_rotation(self):
+        """Rotate the widgets by 1 degree every frame."""
+        for widget in [self.widget1, self.widget2, self.widget3, self.widget4]:
+            widget.set_rotation(widget.rotation_angle + 1)
+
+        self.update()
+
+
+class LiveStatsWidget(QWidget):
+    def __init__(self, svg_path, value_text, label_text, parent=None):
+        super().__init__(parent)
+        self.svg_renderer = QSvgRenderer(svg_path)
+        self.value_text = value_text
+        self.label_text = label_text
+        self.rotation_angle = 0  # Default rotation
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.update()
+
+    def update_content(self, svg_path=None, value_text=None, label_text=None):
+        """Dynamically update SVG, value, and label."""
+        if svg_path:
+            self.svg_renderer = QSvgRenderer(svg_path)
+        if value_text:
+            self.value_text = value_text
+        if label_text:
+            self.label_text = label_text
+        self.update()  # Trigger repaint
+
+    def set_rotation(self, angle):
+        """Set rotation and repaint."""
+        self.rotation_angle = angle
+        self.update()
+    
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+         # Apply rotation
+        painter.translate(self.width() / 2, self.height() / 2)
+        painter.rotate(self.rotation_angle)
+        painter.translate(-self.width() / 2, -self.height() / 2)
+
+        widget_width = self.width()
+        widget_height = self.height()
+
+        # Get SVG size and aspect ratio
+        svg_size = self.svg_renderer.defaultSize()
+        svg_aspect_ratio = svg_size.width() / svg_size.height()
+
+        # Fit SVG within widget bounds
+        if widget_width / widget_height > svg_aspect_ratio:
+            svg_height = widget_height * 0.9  # Reduce height to leave space for label
+            svg_width = svg_height * svg_aspect_ratio
         else:
-            new_width = width
-            new_height = int(new_width / aspect_ratio)
+            svg_width = widget_width * 0.9
+            svg_height = svg_width / svg_aspect_ratio
 
-        self.svg_widget.setFixedSize(QSize(new_width, new_height))
+        # Center SVG
+        svg_x = (widget_width - svg_width) / 2
+        svg_y = (widget_height - svg_height) * 0.2  # Move up slightly
+        svg_rect = QRectF(svg_x, svg_y, svg_width, svg_height)
+        self.svg_renderer.render(painter, svg_rect)
 
-        # Scale font size dynamically
-        font_size = max(10, new_height // 4)
-        self.label.setStyleSheet(f"color: white; font-size: {font_size}px; background: transparent;")
+        # Draw the numeric value
+        value_font_size = svg_height * 0.15
+        value_font = QFont()
+        value_font.setFamily("DM Sans")
+        value_font.setPointSizeF(value_font_size)
+        painter.setFont(value_font)
+        painter.setPen(Qt.GlobalColor.white)
 
-        # Adjust label position based on offset ratio
-        label_offset = int(new_height * self.label_offset_ratio)
-        self.spacer.changeSize(20, label_offset, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
-        self.layout().invalidate()  # Force layout update
+        value_bounds = QRectF(svg_rect)
+        value_bounds.moveCenter(QPointF(svg_rect.center().x(), svg_rect.center().y() + svg_height * 0.09))
+        painter.drawText(value_bounds, Qt.AlignmentFlag.AlignCenter, self.value_text)
 
+        # Draw label text **inside the widget boundaries**
+        label_font_size = svg_height * 0.1
+        label_font = QFont()
+        label_font.setFamily("DM Sans")
+        label_font.setPointSizeF(label_font_size)
+        painter.setFont(label_font)
+
+        # Place label text within the widget, just below the SVG
+        label_bounds = QRectF(svg_rect)
+        label_bounds = label_bounds.adjusted(0, svg_height * 0.23, 0, svg_height * 0.6)  # Shift within bounds
+        painter.drawText(label_bounds, Qt.AlignmentFlag.AlignCenter, self.label_text)

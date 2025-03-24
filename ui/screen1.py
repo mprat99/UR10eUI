@@ -1,227 +1,180 @@
-import math
-from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QFrame, QStackedLayout,
-    QGraphicsScene, QGraphicsView, QGraphicsItem  
-)
-from PyQt6.QtCore import Qt, QSize, QPointF, QTimer
-from PyQt6.QtSvgWidgets import QSvgWidget
-from PyQt6.QtGui import QPainter
-
-class Screen1(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.setStyleSheet("background: transparent;")
-        
-        # Main layout: center the graphics view.
-        main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(0)
-        main_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
-        # --- Build the square container with stacked content ---
-        self.square_container = QFrame()
-        self.square_container.setStyleSheet("background: transparent; border: 0px solid red;")
-        
-        # Use a QStackedLayout to overlay the labels on the SVG.
-        stacked_layout = QStackedLayout(self.square_container)
-        stacked_layout.setContentsMargins(0, 0, 0, 0)
-        stacked_layout.setSpacing(0)
-        # Ensure both widgets are visible.
-        stacked_layout.setStackingMode(QStackedLayout.StackingMode.StackAll)
-        
-        # Top layer: Container for labels
-        labels_container = QWidget()
-        labels_container.setStyleSheet("background: transparent;")
-        labels_layout = QVBoxLayout(labels_container)
-        labels_layout.setContentsMargins(0, 0, 0, 0)
-        labels_layout.setSpacing(0)
-        
-        self.title_label = QLabel("Max. Productivity")
-        self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.title_label.setStyleSheet("font: DM Sans; font-weight: bold; background: transparent;")
-        
-        self.subtitle_label = QLabel("Keep distance")
-        self.subtitle_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.subtitle_label.setStyleSheet("font: DM Sans; background: transparent;")
-        
-        labels_layout.addStretch(1)
-        labels_layout.addWidget(self.title_label, alignment=Qt.AlignmentFlag.AlignCenter)
-        labels_layout.addWidget(self.subtitle_label, alignment=Qt.AlignmentFlag.AlignCenter)
-        labels_layout.addStretch(1)
-        stacked_layout.addWidget(labels_container)
-        
-        # Base layer: SVG widget
-        self.svg_widget = QSvgWidget("assets/green_ring.svg")
-        self.svg_widget.setStyleSheet("background: transparent;")
-        stacked_layout.addWidget(self.svg_widget)
-        
-        # --- Set up QGraphicsScene / QGraphicsView for rotation ---
-        self.graphics_scene = QGraphicsScene()
-        self.graphics_proxy = self.graphics_scene.addWidget(self.square_container)
-        self.graphics_proxy.setCacheMode(QGraphicsItem.CacheMode.DeviceCoordinateCache)
-
-        self.graphics_view = QGraphicsView(self.graphics_scene)
-        self.graphics_view.setStyleSheet("background: transparent; border: 0px solid red;")
-        self.graphics_view.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.graphics_view.setRenderHints(
-            QPainter.RenderHint.Antialiasing | QPainter.RenderHint.SmoothPixmapTransform
-        )
-        self.graphics_view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.graphics_view.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        
-        main_layout.addWidget(self.graphics_view, alignment=Qt.AlignmentFlag.AlignCenter)
-        
-        # --- Rotation timer ---
-        # self.rotation_timer = QTimer(self)
-        # self.rotation_timer.timeout.connect(self.increment_rotation)
-        # self.rotation_timer.start(16)  # ~60 FPS
-    
-    def increment_rotation(self):
-        """Rotate the proxy widget by 1 degree."""
-        self.graphics_proxy.setRotation(self.graphics_proxy.rotation() + 1)
-        self.graphics_scene.update()  # <-- Force scene repaint
-        print(self.graphics_proxy.rotation())
-    
-    def resizeEvent(self, event):
-        """Keep the container square and update scene settings, applying scaling if needed."""
-        super().resizeEvent(event)
-        # Use the smaller of the widget's dimensions for a square container.
-        size = min(self.width(), self.height())
-        if size <= 0:
-            return
-        
-        # Update font sizes relative to container height
-        title_font_size = int(size * 0.1)  # 10% of container height
-        subtitle_font_size = round(size * 0.09)  # 9% of container height
-        
-        self.title_label.setStyleSheet(f"font: DM Sans; font-weight: bold; background: transparent; font-size: {title_font_size}px;")
-        self.subtitle_label.setStyleSheet(f"font: DM Sans; background: transparent; font-size: {subtitle_font_size}px;")
-        
-        self.square_container.setFixedSize(QSize(size, size))
-        self.svg_widget.setFixedSize(QSize(size, size))
-        
-        # Compute the diagonal to ensure the rotated widget isn't clipped.
-        diagonal = size * math.sqrt(2)
-        # Set scene rect once for rotation
-        self.graphics_scene.setSceneRect(-diagonal/2, -diagonal/2, diagonal, diagonal)
-        
-        # Center the proxy widget in the scene.
-        self.graphics_proxy.setPos(-size/2, -size/2)
-        self.graphics_proxy.setTransformOriginPoint(QPointF(size/2, size/2))
-
-        # Ensure the view matches the ring size exactly
-        self.graphics_view.setFixedSize(QSize(size, size))
-        
-        # Reset any previous scaling
-        self.graphics_view.resetTransform()
-        
-        # Center the view on the proxy widget
-        self.graphics_view.centerOn(self.graphics_proxy)
-# import math
-# from PyQt6.QtWidgets import (
-#     QWidget, QVBoxLayout, QLabel, QFrame, QStackedLayout,
-#     QGraphicsScene, QGraphicsView
-# )
-# from PyQt6.QtCore import Qt, QSize, QPointF, QTimer
+# from PyQt6.QtWidgets import QWidget
 # from PyQt6.QtSvgWidgets import QSvgWidget
-# from PyQt6.QtGui import QPainter
+# from PyQt6.QtGui import QPainter, QFont
+# from PyQt6.QtCore import Qt, QRectF
 
 # class Screen1(QWidget):
-#     def __init__(self):
-#         super().__init__()
-#         self.setStyleSheet("background: transparent;")
+#     def __init__(self, parent=None):
+#         super().__init__(parent)
+#         svg_path = "assets/green_ring.svg"
+#         # Create a fixed SVG widget
+#         self.svg_widget = QSvgWidget(svg_path, self)
+#         # Two labels: title and subtitle
+#         self.title_text = "Max. Productivity"
+#         self.subtitle_text = "Keep distance"
+#         self.resizeEvent(None)  # Initialize sizes
         
-#         # Main layout: centers the QGraphicsView.
-#         main_layout = QVBoxLayout(self)
-#         main_layout.setContentsMargins(0, 0, 0, 0)
-#         main_layout.setSpacing(0)
-#         main_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
-#         # --- Build the square container with stacked content ---
-#         self.square_container = QFrame()
-#         # The red border is for debugging; remove it if desired.
-#         self.square_container.setStyleSheet("background: transparent; border: 1px solid red;")
-        
-#         # Use a QStackedLayout to overlay the labels on top of the SVG.
-#         stacked_layout = QStackedLayout(self.square_container)
-#         stacked_layout.setContentsMargins(0, 0, 0, 0)
-#         stacked_layout.setSpacing(0)
-#         stacked_layout.setStackingMode(QStackedLayout.StackingMode.StackAll)
-        
-#         # --- Top layer: Container for labels ---
-#         labels_container = QWidget()
-#         labels_container.setStyleSheet("background: transparent;")
-#         labels_layout = QVBoxLayout(labels_container)
-#         labels_layout.setContentsMargins(0, 0, 0, 0)
-#         labels_layout.setSpacing(0)
-        
-#         self.title_label = QLabel("Max. Productivity")
-#         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-#         self.title_label.setStyleSheet("font: DM Sans; font-weight: bold; background: transparent;")
-        
-#         self.subtitle_label = QLabel("Keep distance")
-#         self.subtitle_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-#         self.subtitle_label.setStyleSheet("font: DM Sans; background: transparent;")
-        
-#         labels_layout.addStretch(1)
-#         labels_layout.addWidget(self.title_label, alignment=Qt.AlignmentFlag.AlignCenter)
-#         labels_layout.addWidget(self.subtitle_label, alignment=Qt.AlignmentFlag.AlignCenter)
-#         labels_layout.addStretch(1)
-#         stacked_layout.addWidget(labels_container)
-        
-#         # --- Base layer: SVG widget ---
-#         self.svg_widget = QSvgWidget("assets/green_ring.svg")
-#         self.svg_widget.setStyleSheet("background: transparent;")
-#         stacked_layout.addWidget(self.svg_widget)
-        
-#         # --- Set up QGraphicsScene / QGraphicsView for rotation ---
-#         self.graphics_scene = QGraphicsScene()
-#         # Add the square container (with its stacked layout) to the scene.
-#         self.graphics_proxy = self.graphics_scene.addWidget(self.square_container)
-#         self.graphics_view = QGraphicsView(self.graphics_scene)
-#         self.graphics_view.setStyleSheet("background: transparent; border: 1px solid red;")
-#         self.graphics_view.setAlignment(Qt.AlignmentFlag.AlignCenter)
-#         self.graphics_view.setRenderHints(
-#             QPainter.RenderHint.Antialiasing | QPainter.RenderHint.SmoothPixmapTransform
-#         )
-#         self.graphics_view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-#         self.graphics_view.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        
-#         main_layout.addWidget(self.graphics_view, alignment=Qt.AlignmentFlag.AlignCenter)
-        
-#         # --- Rotation timer (using built-in proxy rotation) ---
-#         self.rotation_timer = QTimer(self)
-#         self.rotation_timer.timeout.connect(self.increment_rotation)
-#         self.rotation_timer.start(100)  # Approximately 10 FPS
-    
-#     def increment_rotation(self):
-#         """Rotate the proxy widget by 1 degree using its setRotation() method."""
-#         new_angle = (self.graphics_proxy.rotation() + 1) % 360
-#         self.graphics_proxy.setRotation(new_angle)
-#         self.graphics_scene.update()
-#         print(f"Rotation: {new_angle}")
-    
 #     def resizeEvent(self, event):
-#         """Update sizes and center the scene; used during development for responsiveness."""
-#         super().resizeEvent(event)
-#         size = min(self.width(), self.height())
-#         if size <= 0:
-#             return
+#         """Resize the SVG widget relative to the screen height."""
+#         screen_height = self.height()
+#         svg_size = int(0.98 * screen_height)  # SVG size is 40% of widget height
+#         self.svg_widget.setGeometry(
+#             (self.width() - svg_size) // 2,
+#             (self.height() - svg_size) // 2,
+#             svg_size,
+#             svg_size
+#         )
+#         self.update()
         
-#         # Update container and SVG widget sizes.
-#         self.square_container.setFixedSize(QSize(size, size))
-#         self.svg_widget.setFixedSize(QSize(size, size))
+#     def paintEvent(self, event):
+#         """Draw the title and subtitle on top of the static SVG."""
+#         painter = QPainter(self)
+#         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         
-#         # Compute the diagonal to allow the rotated widget to be fully visible.
-#         diagonal = size * math.sqrt(2)
-#         self.graphics_scene.setSceneRect(-diagonal/2, -diagonal/2, diagonal, diagonal)
+#         # Get the geometry of the SVG widget
+#         svg_rect = self.svg_widget.geometry()
         
-#         # Center the proxy widget in the scene.
-#         self.graphics_proxy.setPos(-size/2, -size/2)
-#         self.graphics_proxy.setTransformOriginPoint(QPointF(size/2, size/2))
+#         # Calculate font sizes relative to the SVG size
+#         title_font_size = int(svg_rect.height() * 0.08)
+#         subtitle_font_size = int(svg_rect.height() * 0.07)
         
-#         # Ensure the QGraphicsView exactly matches the container size.
-#         self.graphics_view.setFixedSize(QSize(size, size))
-#         self.graphics_view.resetTransform()
-#         self.graphics_view.centerOn(self.graphics_proxy)
+#         label_group_height = svg_rect.height() * 0.3  # for instance, the label_group takes 50% of the SVG height
+#         label_group_rect = QRectF(
+#             svg_rect.left(),
+#             svg_rect.center().y() - label_group_height / 2,
+#             svg_rect.width(),
+#             label_group_height
+#         )
 
+#         # Draw the title text (centered in the upper half of the SVG area)
+#         title_font = QFont("DM Sans", title_font_size, QFont.Weight.Bold)
+#         painter.setFont(title_font)
+#         painter.setPen(Qt.GlobalColor.white)
+#         title_rect = QRectF(label_group_rect.left(), label_group_rect.top(), label_group_rect.width(), label_group_rect.height() / 2)
+#         subtitle_rect = QRectF(label_group_rect.left(), label_group_rect.top() + label_group_rect.height() / 2, label_group_rect.width(), label_group_rect.height() / 2)
+
+#         painter.drawText(title_rect, Qt.AlignmentFlag.AlignCenter, self.title_text)
+        
+#         # Draw the subtitle text (centered in the lower half of the SVG area)
+#         subtitle_font = QFont("DM Sans", subtitle_font_size)
+#         painter.setFont(subtitle_font)
+#         painter.drawText(subtitle_rect, Qt.AlignmentFlag.AlignCenter, self.subtitle_text)
+
+#         # Set a debug pen (e.g., red color with 1px width)
+#         painter.setPen(Qt.GlobalColor.red)
+#         painter.drawRect(svg_rect)      # Draw border around the SVG area
+#         painter.drawRect(title_rect)    # Draw border around the title area
+#         painter.drawRect(subtitle_rect) # Draw border around the subtitle area
+
+from PyQt6.QtWidgets import QWidget
+from PyQt6.QtSvg import QSvgRenderer
+from PyQt6.QtGui import QPainter, QFont
+from PyQt6.QtCore import Qt, QRectF, QTimer
+
+class Screen1(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        svg_path = "assets/green_ring.svg"
+        
+        # Use QSvgRenderer to load the SVG (instead of QSvgWidget)
+        self.svg_renderer = QSvgRenderer(svg_path)
+        
+        # Two labels: title and subtitle
+        self.title_text = "Max. Productivity"
+        self.subtitle_text = "Keep distance"
+        self.rotation_angle = 0  # Rotation angle for labels
+        
+        # Initialize sizes
+        self.resizeEvent(None)
+        
+        # Optional: Add a timer to demonstrate rotation
+        self.timer = QTimer(self)
+        # self.timer.timeout.connect(self.rotate_labels)
+        # self.timer.start(1000)  # Rotate every 100ms
+
+    def set_rotation(self, angle):
+        """Set the rotation angle for the labels."""
+        self.rotation_angle = angle
+        self.update()  # Trigger a repaint
+
+    def rotate_labels(self):
+        """Rotate the labels for demonstration purposes."""
+        self.rotation_angle = (self.rotation_angle + 1) % 360
+        self.update()
+
+    def resizeEvent(self, event):
+        """Resize the SVG rendering area relative to the screen height."""
+        self.update()
+
+    def paintEvent(self, event):
+        """Draw the title and subtitle, then render the SVG."""
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        
+        # Calculate SVG size relative to the screen dimensions
+        screen_height = self.height()
+        screen_width = self.width()
+        svg_size = int(min(screen_height, screen_width) * 0.98)  # SVG size is 98% of the minimum dimension      
+        svg_rect = QRectF(
+            (self.width() - svg_size) // 2,
+            (self.height() - svg_size) // 2,
+            svg_size,
+            svg_size
+        )
+        # Render the SVG after the labels
+        self.svg_renderer.render(painter, svg_rect)
+        # Draw the labels first
+        self.draw_labels(painter, svg_rect)
+        
+        # Debugging Borders (optional)
+        painter.setPen(Qt.GlobalColor.red)
+        painter.drawRect(svg_rect)  # Border around the SVG
+        
+
+    def draw_labels(self, painter: QPainter, svg_rect):
+        """Draw the title and subtitle on top of the static SVG."""
+        # Calculate font sizes relative to the SVG size
+        title_font_size = int(svg_rect.height() * 0.07)
+        subtitle_font_size = int(svg_rect.height() * 0.06)
+
+        
+        # Define the area for the labels (centered within the SVG widget)
+        label_group_height = svg_rect.height() * 0.3  # Group takes 30% of the SVG height
+        label_group_rect = QRectF(
+            svg_rect.left(),
+            svg_rect.center().y() - label_group_height / 2,
+            svg_rect.width(),
+            label_group_height
+        )
+
+        # Apply transformation for rotation around the center of the labels
+        painter.save()  # Save the current painter state
+        painter.translate(label_group_rect.center())  # Move to the center of the label group
+        painter.rotate(self.rotation_angle)  # Rotate
+        painter.translate(-label_group_rect.center())  # Move back
+
+        # Draw the title text (centered in the upper half of the label group)
+        title_font = QFont("DM Sans", title_font_size, QFont.Weight.Bold)
+        painter.setFont(title_font)
+        painter.setPen(Qt.GlobalColor.white)
+        title_rect = QRectF(
+            label_group_rect.left(),
+            label_group_rect.top(),
+            label_group_rect.width(),
+            label_group_rect.height() / 2
+        )
+        painter.drawText(title_rect, Qt.AlignmentFlag.AlignCenter, self.title_text)
+        
+        # Draw the subtitle text (centered in the lower half of the label group)
+        subtitle_font = QFont("DM Sans", subtitle_font_size)
+        painter.setFont(subtitle_font)
+        subtitle_rect = QRectF(
+            label_group_rect.left(),
+            label_group_rect.top() + label_group_rect.height() / 2,
+            label_group_rect.width(),
+            label_group_rect.height() / 2
+        )
+        painter.drawText(subtitle_rect, Qt.AlignmentFlag.AlignCenter, self.subtitle_text)
+        painter.drawRect(label_group_rect)
+        # Restore the painter state (undo rotation)
+        painter.restore()
