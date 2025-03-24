@@ -6,10 +6,10 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QGuiApplication
 
 from config.settings import WINDOW_TITLE, WINDOW_ASPECT_RATIO
-from .ring_widget import RingWidget
-from .screen0 import Screen0
-from .screen1 import Screen1
-from .screen2 import Screen2
+from .widgets.ring_widget import RingWidget
+from .screens.screen0 import Screen0
+from .screens.screen1 import Screen1
+from .screens.screen2 import Screen2
 
 class MainWindow(QMainWindow):
     def __init__(self):

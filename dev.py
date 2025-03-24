@@ -60,7 +60,9 @@ def main():
     
     # Watch both the root directory and the ui directory
     observer.schedule(event_handler, ".", recursive=False)
-    observer.schedule(event_handler, "./ui", recursive=False)
+    observer.schedule(event_handler, "./ui/screens", recursive=False)
+    observer.schedule(event_handler, "./ui/widgets", recursive=False)
+    observer.schedule(event_handler, "./config", recursive=False)
     observer.start()
     
     try:

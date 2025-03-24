@@ -7,6 +7,10 @@ TCP_PORT = 30003  # Default UR robot port
 # UI settings
 WINDOW_TITLE = "UR10e Control Interface"
 BACKGROUND_COLOR = "#000000"
+GREEN_COLOR = "#00FF00"
+YELLOW_COLOR = "#FFFF00"
+RED_COLOR = "#FF0000"
+BLUE_COLOR = "#0000FF"
 
 # Ring animation settings
 RING_COLOR = (0, 255, 0)  # Default green color
@@ -22,4 +26,4 @@ WINDOW_ASPECT_RATIO = 9/4  # Height to width ratio (9 times taller than wider)
 
 # Section widget settings
 SECTION_ASPECT_RATIO = 3/4  # Height to width ratio for section widgets
-SECTION_MARGIN = 20         # Margin between sections in pixels 
+SECTION_MARGIN = 0         # Margin between sections in pixels 
