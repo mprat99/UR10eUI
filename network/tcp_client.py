@@ -1,123 +1,134 @@
-"""TCP client implementation for communicating with the UR robot."""
-
-import socket
+import json
 import struct
-import threading
-from typing import Callable, Optional
-from PyQt6.QtCore import QObject, pyqtSignal
-
+from PyQt6.QtCore import QObject, pyqtSignal, QByteArray, QTimer
+from PyQt6.QtNetwork import QTcpSocket, QAbstractSocket
 from config.settings import TCP_HOST, TCP_PORT
 
-class URClient(QObject):
-    # Signals for different types of data
-    robot_state_changed = pyqtSignal(dict)  # Emitted when robot state data is received
-    error_occurred = pyqtSignal(str)        # Emitted when an error occurs
-    
-    def __init__(self):
-        super().__init__()
-        self.socket: Optional[socket.socket] = None
-        self.connected = False
-        self.running = False
-        self.receive_thread: Optional[threading.Thread] = None
-    
-    def connect(self) -> bool:
+RECONNECT_INTERVAL = 5000  # 5 seconds
+
+class TCPClient(QObject):
+    # Signals for parsed robot state data and errors
+    message_received = pyqtSignal(dict)
+    error_occurred = pyqtSignal(str)
+    connection_lost = pyqtSignal()  # Signal for unexpected disconnection
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.socket = QTcpSocket(self)
+        self.socket.readyRead.connect(self._on_ready_read)
+        self.socket.errorOccurred.connect(self._on_error)
+        self.socket.disconnected.connect(self._on_disconnected)  # Handle disconnections
+
+        self._buffer = QByteArray()       # Buffer for accumulating incoming data
+        self._message_queue = []          # List to hold messages pending emission
+
+        self.reconnect_timer = QTimer(self)
+        self.reconnect_timer.setInterval(RECONNECT_INTERVAL)
+        self.reconnect_timer.timeout.connect(self._attempt_reconnect)
+
+    def connect_to_robot(self):
         """Connect to the robot's TCP server."""
-        try:
-            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.socket.connect((TCP_HOST, TCP_PORT))
-            self.connected = True
-            self.running = True
-            
-            # Start receive thread
-            self.receive_thread = threading.Thread(target=self._receive_loop)
-            self.receive_thread.daemon = True
-            self.receive_thread.start()
-            
-            return True
-        except Exception as e:
-            self.error_occurred.emit(f"Connection failed: {str(e)}")
-            return False
-    
-    def disconnect(self):
+        self.socket.connectToHost(TCP_HOST, TCP_PORT)
+        if not self.socket.waitForConnected(3000):
+            self.error_occurred.emit(f"Connection failed: {self.socket.errorString()}")
+            self._start_reconnect_attempts()
+        else:
+            print("Connected to robot.")
+
+    def disconnect_from_robot(self):
         """Disconnect from the robot's TCP server."""
-        self.running = False
-        if self.socket:
-            try:
-                self.socket.close()
-            except:
-                pass
-        self.connected = False
-        if self.receive_thread:
-            self.receive_thread.join(timeout=1.0)
-    
-    def _receive_loop(self):
-        """Background thread for receiving data from the robot."""
-        while self.running:
-            try:
-                # Read message size (first 4 bytes)
-                size_data = self._recv_all(4)
-                if not size_data:
-                    break
-                
-                msg_size = struct.unpack("!I", size_data)[0]
-                
-                # Read the message
-                msg_data = self._recv_all(msg_size)
-                if not msg_data:
-                    break
-                
-                # Parse and emit the data
-                state_data = self._parse_state_data(msg_data)
-                self.robot_state_changed.emit(state_data)
-                
-            except Exception as e:
-                self.error_occurred.emit(f"Receive error: {str(e)}")
+        if self.socket.state() == QAbstractSocket.SocketState.ConnectedState:
+            self.socket.disconnectFromHost()
+            if self.socket.state() != QAbstractSocket.SocketState.UnconnectedState:
+                self.socket.waitForDisconnected(3000)
+            print("Disconnected from robot.")
+        self.reconnect_timer.stop()  # Stop reconnection attempts if user manually disconnects
+
+    def _on_disconnected(self):
+        """Handles unexpected disconnections and starts reconnection attempts."""
+        self.error_occurred.emit("Connection lost. Attempting to reconnect...")
+        self.connection_lost.emit()
+        self._start_reconnect_attempts()
+
+    def _start_reconnect_attempts(self):
+        """Starts a timer to attempt reconnection at regular intervals."""
+        if not self.reconnect_timer.isActive():
+            self.reconnect_timer.start()
+
+    def _attempt_reconnect(self):
+        """Attempts to reconnect to the server."""
+        if self.socket.state() == QAbstractSocket.SocketState.ConnectedState:
+            self.reconnect_timer.stop()
+            return  # Already connected
+
+        print("Attempting to reconnect...")
+        self.socket.abort()  # Reset any failed connection attempts
+        self.socket.connectToHost(TCP_HOST, TCP_PORT)
+
+    def _on_ready_read(self):
+        """
+        Called when new data is available from the socket.
+        It appends data to an internal buffer, then processes complete messages.
+        Each message begins with a 4-byte header that encodes the message length.
+        """
+        self._buffer.append(self.socket.readAll())
+
+        # Process as many complete messages as possible
+        while True:
+            # Need at least 4 bytes to know message length
+            if self._buffer.size() < 4:
                 break
-        
-        self.connected = False
-    
-    def _recv_all(self, size: int) -> Optional[bytes]:
-        """Receive exactly 'size' bytes from the socket."""
-        data = bytearray()
-        while len(data) < size:
+
+            # Peek at the first 4 bytes to determine message size
+            header = self._buffer.left(4)
+            msg_size = struct.unpack("!I", header)[0]
+
+            # Wait until the entire message has arrived
+            if self._buffer.size() < 4 + msg_size:
+                break
+
+            # Remove the header from the buffer
+            self._buffer = self._buffer.mid(4)
+            # Extract the message data
+            msg_data = self._buffer.left(msg_size)
+            self._buffer = self._buffer.mid(msg_size)
+
+            # Parse the JSON message
             try:
-                packet = self.socket.recv(size - len(data))
-                if not packet:
-                    return None
-                data.extend(packet)
-            except:
-                return None
-        return bytes(data)
-    
-    def _parse_state_data(self, data: bytes) -> dict:
-        """Parse the robot state data from the received bytes.
-        
-        This is a placeholder implementation. The actual parsing would depend
-        on the specific message format used by the UR robot.
+                message = json.loads(msg_data.data().decode('utf-8'))
+            except Exception as e:
+                self.error_occurred.emit(f"JSON parse error: {str(e)}")
+                continue
+
+            # Remove any existing message in the queue with the same "type"
+            if "type" in message:
+                self._message_queue = [msg for msg in self._message_queue if msg.get("type") != message["type"]]
+
+            # Insert the message in the queue:
+            # If the message has high priority, insert it at the front;
+            # otherwise, append to the end.
+            if message.get("priority") == "high":
+                self._message_queue.insert(0, message)
+            else:
+                self._message_queue.append(message)
+
+        # Process the queued messages after reading all available data.
+        self._process_message_queue()
+
+    def _process_message_queue(self):
         """
-        # TODO: Implement actual parsing based on UR robot protocol
-        return {
-            "raw_data": data.hex()
-        }
-    
-    def send_command(self, command: str) -> bool:
-        """Send a command to the robot.
-        
-        :param command: The command string to send
-        :return: True if the command was sent successfully
+        Emits messages stored in the queue.
+        For safety, we sort the queue so that if both high and normal priority
+        messages are queued, all high-priority messages are processed first.
+        The relative order among messages with the same priority is maintained.
         """
-        if not self.connected:
-            self.error_occurred.emit("Not connected to robot")
-            return False
-        
-        try:
-            # Add command terminator if needed
-            if not command.endswith('\n'):
-                command += '\n'
-            
-            # Send the command
-            self.socket.sendall(command.encode('utf-8'))
-            return True
-        except Exception as e:
-            self.error_occurred.emit(f"Send error: {str(e)}")
-            return False 
+        self._message_queue.sort(key=lambda msg: 0 if msg.get("priority") == "high" else 1)
+        while self._message_queue:
+            message = self._message_queue.pop(0)
+            self.message_received.emit(message)
+
+    def _on_error(self, socket_error):
+        """Emits any socket errors and starts reconnection if needed."""
+        self.error_occurred.emit(f"Socket error: {self.socket.errorString()}")
+        self._start_reconnect_attempts()
+

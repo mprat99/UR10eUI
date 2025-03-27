@@ -5,7 +5,7 @@ TCP_HOST = "localhost"
 TCP_PORT = 30003  # Default UR robot port
 
 # UI settings
-WINDOW_TITLE = "UR10e Control Interface"
+WINDOW_TITLE = "UR10e Interface"
 BACKGROUND_COLOR = "#000000"
 GREEN_COLOR = "#00FF00"
 YELLOW_COLOR = "#FFFF00"

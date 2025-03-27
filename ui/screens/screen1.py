@@ -1,85 +1,21 @@
-# from PyQt6.QtWidgets import QWidget
-# from PyQt6.QtSvgWidgets import QSvgWidget
-# from PyQt6.QtGui import QPainter, QFont
-# from PyQt6.QtCore import Qt, QRectF
-
-# class Screen1(QWidget):
-#     def __init__(self, parent=None):
-#         super().__init__(parent)
-#         svg_path = "assets/green_ring.svg"
-#         # Create a fixed SVG widget
-#         self.svg_widget = QSvgWidget(svg_path, self)
-#         # Two labels: title and subtitle
-#         self.title_text = "Max. Productivity"
-#         self.subtitle_text = "Keep distance"
-#         self.resizeEvent(None)  # Initialize sizes
-        
-#     def resizeEvent(self, event):
-#         """Resize the SVG widget relative to the screen height."""
-#         screen_height = self.height()
-#         svg_size = int(0.98 * screen_height)  # SVG size is 40% of widget height
-#         self.svg_widget.setGeometry(
-#             (self.width() - svg_size) // 2,
-#             (self.height() - svg_size) // 2,
-#             svg_size,
-#             svg_size
-#         )
-#         self.update()
-        
-#     def paintEvent(self, event):
-#         """Draw the title and subtitle on top of the static SVG."""
-#         painter = QPainter(self)
-#         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        
-#         # Get the geometry of the SVG widget
-#         svg_rect = self.svg_widget.geometry()
-        
-#         # Calculate font sizes relative to the SVG size
-#         title_font_size = int(svg_rect.height() * 0.08)
-#         subtitle_font_size = int(svg_rect.height() * 0.07)
-        
-#         label_group_height = svg_rect.height() * 0.3  # for instance, the label_group takes 50% of the SVG height
-#         label_group_rect = QRectF(
-#             svg_rect.left(),
-#             svg_rect.center().y() - label_group_height / 2,
-#             svg_rect.width(),
-#             label_group_height
-#         )
-
-#         # Draw the title text (centered in the upper half of the SVG area)
-#         title_font = QFont("DM Sans", title_font_size, QFont.Weight.Bold)
-#         painter.setFont(title_font)
-#         painter.setPen(Qt.GlobalColor.white)
-#         title_rect = QRectF(label_group_rect.left(), label_group_rect.top(), label_group_rect.width(), label_group_rect.height() / 2)
-#         subtitle_rect = QRectF(label_group_rect.left(), label_group_rect.top() + label_group_rect.height() / 2, label_group_rect.width(), label_group_rect.height() / 2)
-
-#         painter.drawText(title_rect, Qt.AlignmentFlag.AlignCenter, self.title_text)
-        
-#         # Draw the subtitle text (centered in the lower half of the SVG area)
-#         subtitle_font = QFont("DM Sans", subtitle_font_size)
-#         painter.setFont(subtitle_font)
-#         painter.drawText(subtitle_rect, Qt.AlignmentFlag.AlignCenter, self.subtitle_text)
-
-#         # Set a debug pen (e.g., red color with 1px width)
-#         painter.setPen(Qt.GlobalColor.red)
-#         painter.drawRect(svg_rect)      # Draw border around the SVG area
-#         painter.drawRect(title_rect)    # Draw border around the title area
-#         painter.drawRect(subtitle_rect) # Draw border around the subtitle area
 
 from PyQt6.QtWidgets import QWidget
 from PyQt6.QtSvg import QSvgRenderer
-from PyQt6.QtGui import QPainter, QFont
-from PyQt6.QtCore import Qt, QRectF, QTimer
-from config.settings import GREEN_COLOR, YELLOW_COLOR, RED_COLOR, BLUE_COLOR
-
+from PyQt6.QtGui import QPainter, QFont, QFontMetricsF, QFontMetrics, QTextDocument, QTextOption
+from PyQt6.QtCore import Qt, QRectF, QTimer, QTime, QPropertyAnimation, pyqtProperty, QEasingCurve
+from utils.enums import State
 
 class Screen1(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, init_config, parent=None):
         super().__init__(parent)
-        svg_path = "assets/green_ring.svg"
+        self.ring_svg_path = "assets/green_ring.svg"
+        self.central_warning_svg_path = "assets/central_warning.svg"
+        self.central_error_svg_path = "assets/central_error.svg"
+        self.central_done_svg_path = "assets/central_done.svg"
         
         # Use QSvgRenderer to load the SVG (instead of QSvgWidget)
-        self.svg_renderer = QSvgRenderer(svg_path)
+        self.ring_svg_renderer = QSvgRenderer(self.ring_svg_path)
+        self.central_svg_renderer = QSvgRenderer()
         
         # Two labels: title and subtitle
         self.title_text = "Max. Productivity"
@@ -89,59 +25,93 @@ class Screen1(QWidget):
         # Initialize sizes
         self.resizeEvent(None)
         
-        # Optional: Add a timer to demonstrate rotation
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.rotate_labels)
-        self.timer.start(16)  # Rotate every 100ms
+        self._opacity = 0.0
+        self._scale = 0.5  # Start small
 
-    # def set_rotation(self, angle):
-    #     """Set the rotation angle for the labels."""
-    #     self.rotation_angle = angle
-    #     self.update()  # Trigger a repaint
+        # Create opacity animation
+        self.opacity_anim = QPropertyAnimation(self, b"opacity")
+        self.opacity_anim.setDuration(1500)
+        self.opacity_anim.setStartValue(0.0)
+        self.opacity_anim.setEndValue(1.0)
+        self.opacity_anim.setEasingCurve(QEasingCurve.Type.OutQuad)
 
-    def rotate_labels(self):
+        # Create scale animation
+        self.scale_anim = QPropertyAnimation(self, b"scale")
+        self.scale_anim.setDuration(500)
+        self.scale_anim.setStartValue(1.05)
+        self.scale_anim.setEndValue(1.0)
+        self.scale_anim.setEasingCurve(QEasingCurve.Type.OutQuad)
+        self.update_state(init_config)
+
+    # Property for opacity
+    def get_opacity(self):
+        return self._opacity
+
+    def set_opacity(self, value):
+        self._opacity = value
+        self.update()  # Repaint with new opacity
+
+    opacity = pyqtProperty(float, get_opacity, set_opacity)
+
+    # Property for scale
+    def get_scale(self):
+        return self._scale
+
+    def set_scale(self, value):
+        self._scale = value
+        self.update()  # Repaint with new scale
+
+    scale = pyqtProperty(float, get_scale, set_scale)
+
+
+    def rotate(self, angle):
         """Rotate the labels for demonstration purposes."""
-        self.rotation_angle = (self.rotation_angle + 1) % 360
+        self.rotation_angle = (self.rotation_angle + 1)
         self.update()
 
-    def resizeEvent(self, event):
-        """Resize the SVG rendering area relative to the screen height."""
-        self.update()
+    # def resizeEvent(self, event):
+    #     """Resize the SVG rendering area relative to the screen height."""
+    #     self.update()
 
     def paintEvent(self, event):
         """Draw the title and subtitle, then render the SVG."""
+
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        
-        # Calculate SVG size relative to the screen dimensions
-        screen_height = self.height()
-        screen_width = self.width()
-        svg_size = int(min(screen_height, screen_width) * 0.98)  # SVG size is 98% of the minimum dimension      
-        svg_rect = QRectF(
-            (self.width() - svg_size) // 2,
-            (self.height() - svg_size) // 2,
-            svg_size,
-            svg_size
+        painter.setOpacity(self._opacity)  # Apply smooth fade-in
+
+        # Calculate SVG size
+        screen_size = min(self.width(), self.height())
+        ring_svg_size = int(screen_size * 0.94 * self._scale)  # Apply scaling
+        # central_svg_size = int(screen_size * 0.90 * self._scale)
+
+        ring_svg_rect = QRectF(
+            (self.width() - ring_svg_size) // 2,
+            (self.height() - ring_svg_size) // 2,
+            ring_svg_size,
+            ring_svg_size
         )
-        # Render the SVG after the labels
-        self.svg_renderer.render(painter, svg_rect)
-        # Draw the labels first
-        self.draw_labels(painter, svg_rect)
+
+        # Render SVGs with smooth animation
+        self.ring_svg_renderer.render(painter, ring_svg_rect)
+
+        # # Draw the labels first
+        self.draw_labels(painter, ring_svg_rect)
         
         # Debugging Borders (optional)
-        painter.setPen(Qt.GlobalColor.red)
+        # painter.setPen(Qt.GlobalColor.red)
         # painter.drawRect(svg_rect)  # Border around the SVG
         
 
     def draw_labels(self, painter: QPainter, svg_rect):
-        """Draw the title and subtitle on top of the static SVG."""
-        # Calculate font sizes relative to the SVG size
+        """Draw the title and subtitle dynamically inside the SVG with proper wrapping and layout adjustment."""
+
+        # Base font sizes relative to the SVG height
         title_font_size = int(svg_rect.height() * 0.07)
         subtitle_font_size = int(svg_rect.height() * 0.06)
 
-        
-        # Define the area for the labels (centered within the SVG widget)
-        label_group_height = svg_rect.height() * 0.3  # Group takes 30% of the SVG height
+        # Define the max label group height
+        label_group_height = svg_rect.height() * 0.3  
         label_group_rect = QRectF(
             svg_rect.left(),
             svg_rect.center().y() - label_group_height / 2,
@@ -149,34 +119,83 @@ class Screen1(QWidget):
             label_group_height
         )
 
-        # Apply transformation for rotation around the center of the labels
-        painter.save()  # Save the current painter state
-        painter.translate(label_group_rect.center())  # Move to the center of the label group
-        painter.rotate(self.rotation_angle)  # Rotate
-        painter.translate(-label_group_rect.center())  # Move back
+        # Reset transformation & prepare painter
+        painter.save()
+        painter.translate(label_group_rect.center())  
+        painter.rotate(self.rotation_angle)  
+        painter.translate(-label_group_rect.center())
 
-        # Draw the title text (centered in the upper half of the label group)
+        # DRAW TITLE (WITH WRAPPING)
         title_font = QFont("DM Sans", title_font_size, QFont.Weight.Bold)
-        painter.setFont(title_font)
-        painter.setPen(Qt.GlobalColor.white)
+        title_doc = QTextDocument()
+        title_doc.setDefaultFont(title_font)
+        title_doc.setTextWidth(label_group_rect.width())  # Max width for wrapping
+        title_doc.setHtml(f"<p align='center' style='color:white'>{self.title_text}</p>")  
+
+        # Calculate adjusted height
+        title_height = title_doc.size().height()
         title_rect = QRectF(
-            label_group_rect.left(),
-            label_group_rect.top(),
-            label_group_rect.width(),
-            label_group_rect.height() / 2
+            label_group_rect.left(), label_group_rect.top(),  
+            label_group_rect.width(), title_height
         )
-        painter.drawText(title_rect, Qt.AlignmentFlag.AlignCenter, self.title_text)
         
-        # Draw the subtitle text (centered in the lower half of the label group)
+        # Render wrapped title
+        painter.translate(title_rect.topLeft())  
+        title_doc.drawContents(painter)
+        painter.translate(-title_rect.topLeft())  # Reset position
+
+        # DRAW SUBTITLE (WITH WRAPPING)
         subtitle_font = QFont("DM Sans", subtitle_font_size)
-        painter.setFont(subtitle_font)
+        subtitle_doc = QTextDocument()
+        subtitle_doc.setDefaultFont(subtitle_font)
+        subtitle_doc.setTextWidth(label_group_rect.width())  
+        subtitle_doc.setHtml(f"<p align='center' style='color:white'>{self.subtitle_text}</p>")
+
+        # Calculate subtitle height and place it correctly below title
+        subtitle_height = subtitle_doc.size().height()
         subtitle_rect = QRectF(
-            label_group_rect.left(),
-            label_group_rect.top() + label_group_rect.height() / 2,
-            label_group_rect.width(),
-            label_group_rect.height() / 2
+            label_group_rect.left(), title_rect.bottom(),  
+            label_group_rect.width(), subtitle_height
         )
-        painter.drawText(subtitle_rect, Qt.AlignmentFlag.AlignCenter, self.subtitle_text)
-        # painter.drawRect(label_group_rect)
-        # Restore the painter state (undo rotation)
+
+        # Render wrapped subtitle
+        painter.translate(subtitle_rect.topLeft())  
+        subtitle_doc.drawContents(painter)
+        painter.translate(-subtitle_rect.topLeft())  # Reset position
+
+        # Restore painter state
         painter.restore()
+
+
+
+    def update_state(self, message):
+        """Update the state of the screen based on the received message."""
+        state = message.get("state")
+
+        match State(state):
+            case State.NORMAL:
+                self.ring_svg_renderer.load("assets/green_ring.svg")
+                self.title_text = "Max. Productivity"
+                self.subtitle_text = "Keep distance"
+            case State.REDUCED_SPEED | State.WARNING:
+                self.ring_svg_renderer.load("assets/yellow_ring_warning.svg")
+                self.title_text = "Reduced Speed"
+                self.subtitle_text = "SSM reduced speed"
+            case State.STOPPED | State.ERROR:
+                self.ring_svg_renderer.load("assets/red_ring_error.svg")
+                self.title_text = "Stopped"
+                self.subtitle_text = "Safety-Rated Monitored Stop"
+            case State.TASK_FINISHED:
+                self.ring_svg_renderer.load("assets/blue_ring_done.svg")
+                self.title_text = "Done"
+                self.subtitle_text = "Waiting for new task..."
+            case State.IDLE | _:
+                self.ring_svg_renderer.load("assets/blue_ring.svg")
+                self.title_text = "Idle"
+                self.subtitle_text = "Waiting for new task..."
+
+        self.opacity_anim.start()
+        self.scale_anim.start()
+        self.update()
+            
+

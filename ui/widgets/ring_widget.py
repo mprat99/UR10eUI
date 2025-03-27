@@ -3,15 +3,26 @@
 from PyQt6.QtWidgets import QWidget
 from PyQt6.QtGui import QPainter, QColor, QRadialGradient, QBrush
 from PyQt6.QtCore import QTimer, QRectF, QPointF, Qt, QDateTime
+from utils.enums import State
 
-from config.settings import (
-    RING_COLOR, RING_FREQUENCY, RING_LIFETIME, RING_SPEED,
-    RING_MAX_THICKNESS, RING_FADE_IN, RING_FADE_OUT
-)
+
+class RingState:
+    def __init__(self, color, frequency, lifetime, speed, max_thickness, fade_in, fade_out):
+        self.color = color
+        self.frequency = frequency
+        self.lifetime = lifetime
+        self.speed = speed
+        self.max_thickness = max_thickness
+        self.fade_in = fade_in
+        self.fade_out = fade_out
+
+NORMAL_STATE = RingState((0, 255, 0), 3000, 6000, 0.05, 1000.0, 0.1, 0.9)
+WARNING_STATE = RingState((255, 255, 0), 2000, 5000, 0.07, 800.0, 0.15, 0.85)
+ERROR_STATE = RingState((255, 0, 0), 1000, 3000, 0.1, 600.0, 0.2, 0.8)
+IDLE_STATE = RingState((0, 0, 255), 3000, 6000, 0.05, 1000.0, 0.1, 0.9)
 
 class Ring:
-    def __init__(self, color: QColor, lifetime: int, speed: float, max_thickness: float,
-                 fade_in: float = 0.1, fade_out: float = 0.2):
+    def __init__(self, state: RingState):
         """
         :param color: Base color for the ring.
         :param lifetime: Lifetime in ms (default 3000ms).
@@ -20,54 +31,41 @@ class Ring:
         :param fade_in: Fraction of lifetime used to ramp up opacity.
         :param fade_out: Fraction of lifetime used to ramp down opacity.
         """
-        self.color = color
-        self.lifetime = lifetime      # in ms (e.g., 3000ms)
-        self.speed = speed            # pixels per ms
-        self.max_thickness = max_thickness
-        self.fade_in = fade_in        # fraction of lifetime for fade in
-        self.fade_out = fade_out      # fraction of lifetime for fade out
+        self.state = state
         self.creation_time = QDateTime.currentMSecsSinceEpoch()
 
     def progress(self) -> float:
         """Return normalized progress (0 to 1) of the ring's lifetime."""
         current_time = QDateTime.currentMSecsSinceEpoch()
-        t = (current_time - self.creation_time) / self.lifetime
+        t = (current_time - self.creation_time) / self.state.lifetime
         return min(max(t, 0.0), 1.0)
 
     def radius(self) -> float:
         """Constant speed expansion: radius increases linearly with time."""
-        final_radius = self.speed * self.lifetime  # final radius after lifetime
+        final_radius = self.state.speed * self.state.lifetime  # final radius after lifetime
         return self.progress() * final_radius
 
     def thickness(self) -> float:
         """Linearly grow thickness from 0 to max_thickness over lifetime."""
-        return self.progress() * self.max_thickness
+        return self.progress() * self.state.max_thickness
 
     def fade_factor(self) -> float:
         """Compute an opacity factor that ramps up at the beginning and down at the end."""
         t = self.progress()
-        if t < self.fade_in:
-            return t / self.fade_in
-        elif t > 1 - self.fade_out:
-            return (1 - t) / self.fade_out
+        if t < self.state.fade_in:
+            return t / self.state.fade_in
+        elif t > 1 - self.state.fade_out:
+            return (1 - t) / self.state.fade_out
         else:
             return 1.0
 
 class RingWidget(QWidget):
-    def __init__(self):
+    def __init__(self, init_config):
         super().__init__()
-        
+
         # Set up the widget
         self.setStyleSheet("background-color: black;")
-        
-        # Animation parameters from settings
-        self.ring_frequency = RING_FREQUENCY
-        self.ring_color = QColor(*RING_COLOR)
-        self.lifetime = RING_LIFETIME
-        self.speed = RING_SPEED
-        self.max_thickness = RING_MAX_THICKNESS
-        self.fade_in = RING_FADE_IN
-        self.fade_out = RING_FADE_OUT
+        self.update_state(init_config)
         
         self.rings = []  # List of active rings
         
@@ -83,13 +81,13 @@ class RingWidget(QWidget):
         # Timer to create new rings at the specified frequency
         self.new_ring_timer = QTimer(self)
         self.new_ring_timer.timeout.connect(self.createNewRing)
-        self.new_ring_timer.start(self.ring_frequency)
+        self.new_ring_timer.start(self.state.frequency)
+        
+
     
     def createNewRing(self):
         """Create a new ring with the current parameters."""
-        new_ring = Ring(color=self.ring_color, lifetime=self.lifetime,
-                       speed=self.speed, max_thickness=self.max_thickness,
-                       fade_in=self.fade_in, fade_out=self.fade_out)
+        new_ring = Ring(self.state)
         self.rings.append(new_ring)
     
     def updateAnimation(self):
@@ -110,7 +108,7 @@ class RingWidget(QWidget):
                 continue  # Skip drawing if the ring is too thin
             
             fade = ring.fade_factor()
-            base_color = QColor(ring.color)
+            base_color = QColor(*ring.state.color)
             base_color.setAlpha(int(base_color.alpha() * fade))
             
             inner_radius = max(0, R - T / 2)
@@ -132,3 +130,22 @@ class RingWidget(QWidget):
             rect = QRectF(center.x() - outer_radius, center.y() - outer_radius,
                          2 * outer_radius, 2 * outer_radius)
             painter.drawEllipse(rect) 
+
+    def update_state(self, message):
+        state = message.get("state")
+
+        match State(state):
+            case State.NORMAL:
+                self.state = NORMAL_STATE
+            case State.REDUCED_SPEED | State.WARNING:
+                self.state = WARNING_STATE
+            case State.STOPPED | State.ERROR:
+                self.state = ERROR_STATE
+            case State.IDLE | State.TASK_FINISHED | _:
+                self.state = IDLE_STATE
+       
+        if hasattr(self, "new_ring_timer"):
+            self.new_ring_timer.stop()
+            self.new_ring_timer.start(self.state.frequency)
+            self.anim_timer.stop()
+            self.anim_timer.start()

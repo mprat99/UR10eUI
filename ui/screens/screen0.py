@@ -3,11 +3,12 @@ from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtSvgWidgets import QSvgWidget
 from PyQt6.QtSvg import QSvgRenderer 
 from PyQt6.QtGui import QPainter, QPixmap, QFont
-from PyQt6.QtCore import QRectF, QPointF, QTimer
+from PyQt6.QtCore import QRectF, QPointF, QTimer,QPropertyAnimation, pyqtProperty, QEasingCurve
+from utils.enums import State
 
 class Screen0(QWidget):
     """Screen 0 with a 2x2 grid of widgets, centered properly with fixed spacing."""
-    def __init__(self):
+    def __init__(self, state):
         super().__init__()
 
         self.setStyleSheet("background-color: rgba(0, 0, 0, 0); border: 0px solid red;")
@@ -23,14 +24,7 @@ class Screen0(QWidget):
         grid_layout.setHorizontalSpacing(20)  # Fixed spacing between widgets
 
         grid_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)  # Center everything
-        
-        # Add widgets to the grid
-        # grid_layout.addWidget(LiveStat(), 0, 0)
-        # grid_layout.addWidget(LiveStat(), 0, 1)
-        # grid_layout.addWidget(LiveStat(), 1, 0)
-        # grid_layout.addWidget(LiveStat(), 1, 1)
 
-        # Suppose you have 4 stats to display
         # Provide your actual SVG path, value text, and label text
         self.widget1 = LiveStatsWidget("assets/live_speed_fast.svg", "20", "pick/min")
         self.widget2 = LiveStatsWidget("assets/box.svg", "4220", "/ 5000")
@@ -45,23 +39,60 @@ class Screen0(QWidget):
         self.widget2.setMaximumWidth(200)
         self.widget3.setMaximumWidth(200)
         self.widget4.setMaximumWidth(200)
-        # widget1.setMinimumWidth(50)  # Adjust max width
-        # widget2.setMinimumWidth(50)
-        # widget3.setMinimumWidth(50)
-        # widget4.setMinimumWidth(50)
-
-        self.widget1.update_content(value_text="200")
 
         # Wrap the grid inside the outer layout
         outer_layout.addLayout(grid_layout)
 
         # Apply the main layout
         self.setLayout(outer_layout)
-        # --- Rotation timer ---
-        self.rotation_timer = QTimer(self)
-        self.rotation_timer.timeout.connect(self.increment_rotation)
-        self.rotation_timer.start(16)  # ~60 FPS
-        self.increment_rotation()
+        self.update_state(state)
+
+    # Property for scale
+    def get_scale(self):
+        return self._scale
+
+    def set_scale(self, value):
+        self._scale = value
+        self.update()  # Repaint with new scale
+
+    scale = pyqtProperty(float, get_scale, set_scale)
+
+    def update_state(self, message):
+        """Update speed SVG."""
+        state = message.get("state")
+
+        match State(state):
+            case State.NORMAL:
+                self.widget1.svg_renderer.load("assets/live_speed_fast.svg")
+            case State.REDUCED_SPEED | State.WARNING:
+                self.widget1.svg_renderer.load("assets/live_speed_slow.svg")
+            case State.STOPPED | State.ERROR | State.IDLE | State.TASK_FINISHED:
+                self.widget1.svg_renderer.load("assets/live_speed_stopped.svg")
+                self.widget1.set_value(0)
+            case _:
+                self.widget1.svg_renderer.load("assets/live_speed_fast.svg")
+
+    def update_live_stats(self, message):
+        stats = {
+        "currentSpeed": self.widget1,
+        "currentBox": self.widget2,
+        "remainingTime": self.widget3,
+        "currentPallet": self.widget4,
+        }
+
+        total = {
+            "totalBoxes": self.widget2,
+            "totalPallets": self.widget4,
+        }
+
+        for key, widget in stats.items():
+            if (value := message.get(key)) is not None and isinstance(value, int):
+                widget.set_value(str(value))
+
+        for key, widget in total.items():
+            if (value := message.get(key)) is not None and isinstance(value, int):
+                widget.set_label("/ " + str(value))
+
 
     def resizeEvent(self, event):
         """Update max width of widgets dynamically based on window size."""
@@ -73,10 +104,10 @@ class Screen0(QWidget):
 
         super().resizeEvent(event)  # Call parent resizeEvent
 
-    def increment_rotation(self):
+    def rotate(self, angle):
         """Rotate the widgets by 1 degree every frame."""
         for widget in [self.widget1, self.widget2, self.widget3, self.widget4]:
-            widget.set_rotation(widget.rotation_angle + 1)
+            widget.set_rotation(angle)
 
         self.update()
 
@@ -85,21 +116,21 @@ class LiveStatsWidget(QWidget):
     def __init__(self, svg_path, value_text, label_text, parent=None):
         super().__init__(parent)
         self.svg_renderer = QSvgRenderer(svg_path)
-        self.value_text = value_text
-        self.label_text = label_text
-        self.rotation_angle = 0  # Default rotation
+        self._value_text = value_text  # Use private attributes
+        self._label_text = label_text
+        self.rotation_angle = 0  
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.update()
 
-    def update_content(self, svg_path=None, value_text=None, label_text=None):
-        """Dynamically update SVG, value, and label."""
-        if svg_path:
-            self.svg_renderer = QSvgRenderer(svg_path)
-        if value_text:
-            self.value_text = value_text
-        if label_text:
-            self.label_text = label_text
-        self.update()  # Trigger repaint
+    def set_value(self, value):
+        """Update the numeric value and repaint."""
+        self._value_text = str(value)  # Ensure it's a string
+        self.update()
+
+    def set_label(self, label):
+        """Update the label text and repaint."""
+        self._label_text = label
+        self.update()
 
     def set_rotation(self, angle):
         """Set rotation and repaint."""
@@ -146,7 +177,7 @@ class LiveStatsWidget(QWidget):
 
         value_bounds = QRectF(svg_rect)
         value_bounds.moveCenter(QPointF(svg_rect.center().x(), svg_rect.center().y() + svg_height * 0.09))
-        painter.drawText(value_bounds, Qt.AlignmentFlag.AlignCenter, self.value_text)
+        painter.drawText(value_bounds, Qt.AlignmentFlag.AlignCenter, self._value_text)
 
         # Draw label text **inside the widget boundaries**
         label_font_size = svg_height * 0.1
@@ -158,4 +189,4 @@ class LiveStatsWidget(QWidget):
         # Place label text within the widget, just below the SVG
         label_bounds = QRectF(svg_rect)
         label_bounds = label_bounds.adjusted(0, svg_height * 0.23, 0, svg_height * 0.58)  # Shift within bounds
-        painter.drawText(label_bounds, Qt.AlignmentFlag.AlignCenter, self.label_text)
+        painter.drawText(label_bounds, Qt.AlignmentFlag.AlignCenter, self._label_text)

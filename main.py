@@ -2,24 +2,23 @@
 
 import sys
 from PyQt6.QtWidgets import QApplication
+from PyQt6.QtGui import QIcon
 
 from ui.main_window import MainWindow
-from network.tcp_client import URClient
+from network.tcp_client import TCPClient
 
 def main():
     # Create the application
     app = QApplication(sys.argv)
     
     # Create the TCP client
-    #client = URClient()
-    
+    client = TCPClient()
+    client.connect_to_robot()
+
     # Create and show the main window
-    window = MainWindow()
+    window = MainWindow(client)
+    window.setWindowIcon(QIcon("assets/UR10e.webp"))
     window.show()
-    
-    # Try to connect to the robot
-    #if not client.connect():
-    #    print("Warning: Could not connect to robot. Running in offline mode.")
     
     # Start the application event loop
     exit_code = app.exec()

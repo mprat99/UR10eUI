@@ -83,9 +83,9 @@ class BarChartView(QGraphicsView):
         ]
         self.animated_bars = []
         self._create_bars()
-        QTimer.singleShot(100, self._animate_bars)
+        QTimer.singleShot(200, self._animate_bars)
         data = {"chart": {"units": "min", "bars": [{"label": "Max. Speed", "value": 99}, {"label": "Reduced Speed", "value": 50}, {"label": "Stopped", "value": 2}]}, "statMetric": "Avg. Speed", "statValue": "45", "statUnits": "pick/min"}
-        QTimer.singleShot(5000, lambda: self.receive_data(data))
+        # QTimer.singleShot(15000, lambda: self.receive_data(data))
 
     def receive_data(self, data):
         self.statMetric = data.get("statMetric", self.statMetric)
@@ -186,14 +186,6 @@ class BarChartView(QGraphicsView):
             animated_bar = AnimatedBar(bar_item)
             self.animated_bars.append((animated_bar, value, label_item, formatted_value_item))
 
-        # For demonstration, update the data after 5 seconds.
-        # self.data = [
-        #     ("Max. Speed", QColor("#00ff00"), 50, "1h"),
-        #     ("Reduced Speed", QColor("#ffff00"), 5, "315 min"),
-        #     ("Stopped", QColor("#ff0000"), 1, "25 min"),
-        # ]
-        # QTimer.singleShot(5000, self._animate_bars)
-
     def _animate_bars(self):
         if not self.animated_bars:
             return
@@ -254,6 +246,10 @@ class RotatableContainer(QGraphicsView):
         self.setStyleSheet("background: transparent; border: 0px;")
         self.scene = QGraphicsScene(self)
         self.setScene(self.scene)
+        
+        # Ensure the widget is unparented.
+        if widget.parent() is not None:
+            widget.setParent(None)
 
         self.proxy = QGraphicsProxyWidget()
         self.proxy.setWidget(widget)
@@ -274,28 +270,6 @@ class RotatableContainer(QGraphicsView):
     def rotate(self, angle: float):
         self.proxy.setRotation(angle)
 
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        # Disable scroll bars so that the view does not introduce them.
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        
-        # Calculate the new square size from the available width and height.
-        size = min(self.width(), self.height())
-        
-        # Define your fixed design canvas size (e.g., 300, as used in BarChartView)
-        design_size = 300
-        
-        # Compute the scale factor.
-        scale_factor = size / design_size
-        
-        # Reset any previous transformation.
-        self.resetTransform()
-        # Apply the new scaling.
-        self.scale(scale_factor, scale_factor)
-        
-        # Update the scene rect so that it matches the fixed design size.
-        self.setSceneRect(0, 0, design_size, design_size)
 
     def drawForeground(self, painter: QPainter, rect):
         """
@@ -315,5 +289,30 @@ class RotatableContainer(QGraphicsView):
             painter.drawRect(x, y, diameter, diameter)
             painter.restore()
 
-
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        # Disable scroll bars.
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        
+        # Calculate the new square size from the available width and height.
+        size = min(self.width(), self.height())
+        
+        # Define your fixed design canvas size.
+        design_size = 300
+        
+        # Compute the scale factor.
+        scale_factor = size / design_size
+        
+        # Reset previous transformation.
+        self.resetTransform()
+        # Apply the scaling.
+        self.scale(scale_factor, scale_factor)
+        
+        # Update the scene rect to the design size.
+        self.setSceneRect(0, 0, design_size, design_size)
+        
+        # Force the proxy widget's contained widget to fill the scene.
+        self.proxy.widget().setFixedSize(design_size, design_size)
+        
 
