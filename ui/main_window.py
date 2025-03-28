@@ -87,15 +87,15 @@ class MainWindow(QMainWindow):
         
         # Store rotation state
         self.current_rotation = 0
-        self.target_rotation = 180
+        self.target_rotation = 0
         # self.rotation_timer.start(16)
 
         test_timer = QTimer(self)
-        test_timer.singleShot(2000, lambda: self.update_state({"type": "state", "state": "reduced_speed"}))
-        test_timer.singleShot(5000, lambda: self.update_state({"type": "state", "state": "normal"}))
-        test_timer.singleShot(15000, lambda: self.update_state({"type": "state", "state": "reduced_speed"}))
-        test_timer.singleShot(20000, lambda: self.update_state({"type": "state", "state": "stopped"}))
-        test_timer.singleShot(23000, lambda: self.update_state({"type": "state", "state": "task_finished"}))
+        # test_timer.singleShot(2000, lambda: self.update_state({"type": "state", "state": "reduced_speed"}))
+        # test_timer.singleShot(5000, lambda: self.update_state({"type": "state", "state": "normal"}))
+        # test_timer.singleShot(15000, lambda: self.update_state({"type": "state", "state": "reduced_speed"}))
+        # test_timer.singleShot(20000, lambda: self.update_state({"type": "state", "state": "stopped"}))
+        # test_timer.singleShot(23000, lambda: self.update_state({"type": "state", "state": "task_finished"}))
 
 
     def center_on_screen(self):
@@ -117,7 +117,9 @@ class MainWindow(QMainWindow):
             case MessageType.STATE:
                 self.update_state(message)
             case MessageType.ROTATION:
-                self.rotation_timer.start(16)  # Rotate every 16ms (60 FPS)
+                if (rotation := message.get("rotation")) is not None and isinstance(rotation, (int, float)):
+                    self.target_rotation = rotation
+                    self.rotation_timer.start(16)  # Rotate every 16ms (60 FPS)
             case MessageType.LIVE_STATS:
                 self.update_live_stats(message)
             case MessageType.GLOBAL_STATS:
@@ -127,10 +129,16 @@ class MainWindow(QMainWindow):
     
     def update_state(self, message):
         """Change the state of the UI according to the current state of the robot."""
-        self.ring_widget.update_state(message)
-        QTimer.singleShot(1000, lambda: {self.screen0.update_state(message), 
-                                         self.screen1.update_state(message),
-                                         self.screen2.update_state(message)})
+        try:
+            state = State(message.get("state"))
+            self.ring_widget.update_state(message)
+            QTimer.singleShot(1000, lambda: {self.screen0.update_state(message), 
+                                            self.screen1.update_state(message),
+                                        self.screen2.update_state(message)})
+        except (ValueError, KeyError) as e:
+            # Handle invalid/missing states
+            print(f"Invalid state received: Error: {str(e)}")
+
 
     def rotate_ui(self):
         """Smoothly rotate UI towards target rotation."""

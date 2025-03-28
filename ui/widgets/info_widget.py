@@ -31,6 +31,7 @@ class InfoWidget(QWidget):
         self.subtitle = QLabel()
         self.subtitle.setStyleSheet("font-family: 'DM Sans'; font-size: 20px;")
         self.subtitle.setWordWrap(True)
+        self.subtitle.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.layout.addWidget(self.subtitle)
         self.layout.insertSpacing(self.layout.count(), -40) 
@@ -83,10 +84,11 @@ class InfoWidget(QWidget):
                 self.title.setText("")
                 self.subtitle.setText("")
             
-        if title := config.get("screen2Text0") is not None:
+        if (title := config.get("screen2Text0")) is not None:
             self.title.setText(title)
-        if subtitle := config.get("screen2Text1") is not None:
+        if (subtitle := config.get("screen2Text1")) is not None:
             self.subtitle.setText(subtitle)
+            self.subtitle.setWordWrap(True)
 
         self.logo.renderer().setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)
         self.image.renderer().setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)

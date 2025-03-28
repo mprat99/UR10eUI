@@ -87,7 +87,9 @@ class Screen2(QWidget):
                 # self.rot_container = RotatableContainer(self.info_widget)
                 self.info_widget.update_state(message)
                 self.stacked_widget.setCurrentWidget(self.info_widget)
-            case State.IDLE | _:
+            case State.IDLE:
                 # self.rot_container = RotatableContainer(self.chart_view)
                 self.info_widget.update_state(message)
                 self.stacked_widget.setCurrentWidget(self.info_widget)
+            case _:
+                pass
