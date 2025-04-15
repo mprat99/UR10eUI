@@ -52,10 +52,6 @@ class InfoWidget(QWidget):
 
     def update_state(self, config):
 
-        # item = self.layout.itemAt(5)
-        # if item and isinstance(item, QSpacerItem):  
-        #     self.layout.takeAt(5)  # Remove only if it's spacing
-
         state = config.get("state")
 
         match State(state):

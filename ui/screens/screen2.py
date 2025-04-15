@@ -1,12 +1,13 @@
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QStackedWidget, QSizePolicy
+    QWidget, QVBoxLayout, QStackedWidget, QSizePolicy
 )
+
 
 from PyQt6.QtCore import (
-    Qt, QTimer
-)
+    Qt, QPropertyAnimation, pyqtProperty, QEasingCurve)
 
-from ..widgets.bar_chart_widget import (BarChartView, RotatableContainer)
+from ..widgets.bar_chart_widget import BarChartView
+from ..widgets.rotatable_container import RotatableContainer
 from ..widgets.info_widget import InfoWidget
 
 from utils.enums import State
@@ -44,22 +45,56 @@ class Screen2(QWidget):
         self.layout.addWidget(self.rot_container)
         
 
-        # Use a QTimer to rotate the container continuously.
-        self.rotation_angle = 0
-        # self.timer = QTimer(self)
-        # self.timer.timeout.connect(self.update_rotation)
-        # self.timer.start(16)  # Adjust the speed (ms).
+        # Animation properties
+        self._opacity = 1.0
+        self._scale = 1.05
+        self._rotation = 0.0
+
+        # # Animations setup
+        # self.opacity_anim = QPropertyAnimation(self, b"opacity")
+        # self.opacity_anim.setDuration(1500)
+        # self.opacity_anim.setEasingCurve(QEasingCurve.Type.OutQuad)
+
+        # self.scale_anim = QPropertyAnimation(self, b"scale")
+        # self.scale_anim.setDuration(1500)
+        # self.scale_anim.setEasingCurve(QEasingCurve.Type.OutQuad)
+
+        self.rotate_anim = QPropertyAnimation(self, b"rotation")
+        self.rotate_anim.setEasingCurve(QEasingCurve.Type.OutQuad)
+
         self.update_state(init_config)
 
-    def update_rotation(self):
-        if self.rotation_angle > abs(37):
-            self.increment *= -1
-        self.rotation_angle = (self.rotation_angle + self.increment) % 360
-        self.rot_container.rotate(self.rotation_angle)
+    def rotate(self, target_rotation):
+        """Rotate the screen with smooth animation."""
+        difference = int(abs(self._rotation - target_rotation))
+        
+        if self.rotate_anim.state() == QPropertyAnimation.State.Running:
+            self._rotation = self.rotate_anim.currentValue()
+            self.rotate_anim.stop()
 
-    def rotate(self, angle):
-        """Rotate the whole screen"""
-        self.rot_container.rotate(angle)
+        if difference > 10:
+            self.rotate_anim.setStartValue(self._rotation)
+            self.rotate_anim.setEndValue(target_rotation)
+            self.rotate_anim.setDuration(min(300, 10 * difference))
+            self.rotate_anim.finished.connect(self._on_rotation_animation_finished)
+            self.rotate_anim.start()
+        else:
+            self.set_rotation(target_rotation)
+
+    def _on_rotation_animation_finished(self):
+        """Update the rotation value after animation finishes."""
+        self._rotation = self.rotate_anim.currentValue()
+
+    def get_rotation(self):
+        """Return the current rotation value."""
+        return self._rotation
+
+    def set_rotation(self, angle):
+        """Set the rotation angle and trigger a repaint."""
+        self._rotation = angle
+        self.rot_container.rotate(self._rotation)
+
+    rotation = pyqtProperty(float, get_rotation, set_rotation)  # Register the property
 
     def update_state(self, message):
         """Update the state of the screen based on the received message."""
@@ -67,29 +102,14 @@ class Screen2(QWidget):
 
         match State(state):
             case State.NORMAL | State.IDLE:
-                # self.layout.removeWidget(self.rot_container)
-                # # self.rot_container.deleteLater()
-                # self.chart_view = BarChartView()
-                # self.rot_container = RotatableContainer(self.chart_view)
-                # self.layout.addWidget(self.rot_container)
                 self.stacked_widget.setCurrentWidget(self.chart_view)
-                data = {"chart": {"units": "min", "bars": [{"label": "Max. Speed", "value": 99}, {"label": "Reduced Speed", "value": 50}, {"label": "Stopped", "value": 2}]}, "statMetric": "Avg. Speed", "statValue": "45", "statUnits": "pick/min"}
-                QTimer.singleShot(15000, lambda: self.chart_view.receive_data(data))
-            case State.REDUCED_SPEED | State.WARNING:
-                # self.rot_container = RotatableContainer(self.info_widget)
-                self.info_widget.update_state(message)
-                self.stacked_widget.setCurrentWidget(self.info_widget)
-                
-            case State.STOPPED | State.ERROR:
-                # self.layout.removeWidget(self.rot_container)
-                # self.rot_container = RotatableContainer(self.info_widget)
-                # self.layout.addWidget(self.rot_container)
-                # self.rot_container = RotatableContainer(self.info_widget)
-                self.info_widget.update_state(message)
-                self.stacked_widget.setCurrentWidget(self.info_widget)
-            case State.IDLE:
-                # self.rot_container = RotatableContainer(self.chart_view)
+                self.chart_view.receive_data(message)
+            case (State.REDUCED_SPEED | State.WARNING | State.STOPPED 
+                  | State.ERROR | State.IDLE | State.TASK_FINISHED):
                 self.info_widget.update_state(message)
                 self.stacked_widget.setCurrentWidget(self.info_widget)
             case _:
                 pass
+    
+    def update_global_stats(self, message):
+        self.chart_view.receive_data(message)

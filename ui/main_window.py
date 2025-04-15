@@ -20,7 +20,7 @@ class MainWindow(QMainWindow):
         
         self.current_rotation = 0  # Current rotation of the UI
 
-        self.state = State.TASK_FINISHED
+        self.state = State.NORMAL
         init_config = {"state" : self.state}
 
         # Create central widget
@@ -76,6 +76,7 @@ class MainWindow(QMainWindow):
         self.resize(default_width, default_height)
         
         # Position the window
+        # self.center_on_screen(display_mode="split")ç
         self.center_on_screen()
 
         # Connect to client message signal
@@ -108,6 +109,68 @@ class MainWindow(QMainWindow):
         y = (screen.height() - self.height()) // 2  # Still center vertically
         
         self.move(x, y)
+    # def center_on_screen(self, fullscreen=True, display_mode="split"):
+    #     """
+    #     Position the window according to the specified mode.
+    #     Args:
+    #         fullscreen (bool): Whether to display in fullscreen.
+    #         display_mode (str): "split" for both screens, "screen1" for first, "screen2" for second.
+    #     """
+    #     # Get the list of available screens
+    #     screens = QGuiApplication.screens()
+
+    #     if len(screens) < 2:
+    #         print("Less than two screens detected. Defaulting to fullscreen on one screen.")
+    #         self.showFullScreen()
+    #         return
+
+    #     # Get geometries of both screens
+    #     screen1 = screens[0].geometry()
+    #     screen2 = screens[1].geometry()
+
+    #     # Determine the screen order based on their vertical positions
+    #     if screen1.y() > screen2.y():
+    #         screen1, screen2 = screen2, screen1
+
+    #     # Remove window decorations for fullscreen mode
+    #     if fullscreen:
+    #         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
+
+    #     if display_mode == "split":
+    #         # Calculate the combined height and maximum width
+    #         total_height = screen1.height() + screen2.height()
+    #         max_width = max(screen1.width(), screen2.width())
+            
+    #         # Position the window to cover both screens, centered horizontally
+    #         x = min(screen1.x(), screen2.x()) + (max_width - self.width()) // 2
+    #         y = min(screen1.y(), screen2.y())
+
+    #         # Set the window geometry to span both screens
+    #         self.setGeometry(x, y, max_width, total_height)
+    #         self.showFullScreen()
+
+    #     elif display_mode == "screen1":
+    #         # Set geometry to exactly fit screen 1
+    #         self.setGeometry(screen1)
+    #         if fullscreen:
+    #             self.showFullScreen()
+    #         else:
+    #             self.show()
+
+    #     elif display_mode == "screen2":
+    #         # Set geometry to exactly fit screen 2
+    #         self.setGeometry(screen2)
+    #         if fullscreen:
+    #             self.showFullScreen()
+    #         else:
+    #             self.show()
+
+    #     else:
+    #         print(f"Unknown display mode: {display_mode}. Defaulting to split.")
+    #         self.setGeometry(x, y, max_width, total_height)
+    #         self.showFullScreen()
+
+
 
     def check_message_type(self, message):
         """Check the message type and update the UI accordingly."""
@@ -119,7 +182,9 @@ class MainWindow(QMainWindow):
             case MessageType.ROTATION:
                 if (rotation := message.get("rotation")) is not None and isinstance(rotation, (int, float)):
                     self.target_rotation = rotation
-                    self.rotation_timer.start(16)  # Rotate every 16ms (60 FPS)
+                    self.rotate_ui()
+                    # self.current_rotation = rotation
+                    # self.rotation_timer.start(16)  # Rotate every 16ms (60 FPS)
             case MessageType.LIVE_STATS:
                 self.update_live_stats(message)
             case MessageType.GLOBAL_STATS:
@@ -142,18 +207,18 @@ class MainWindow(QMainWindow):
 
     def rotate_ui(self):
         """Smoothly rotate UI towards target rotation."""
-        if self.current_rotation == self.target_rotation:
-            self.rotation_timer.stop()
-            return
+        # if self.current_rotation == self.target_rotation:
+        #     self.rotation_timer.stop()
+        #     return
 
-        # Calculate increment direction
-        increment = 1 if (self.target_rotation - self.current_rotation) % 360 < 180 else -1
+        # # Calculate increment direction
+        # increment = 1 if (self.target_rotation - self.current_rotation) % 360 < 180 else -1
 
-        # Update rotation
-        self.current_rotation = (self.current_rotation + increment) % 360
-        self.screen0.rotate(self.current_rotation)
-        self.screen1.rotate(self.current_rotation)
-        self.screen2.rotate(self.current_rotation)
+        # # Update rotation
+        # self.current_rotation = (self.current_rotation + increment) % 360
+        self.screen0.rotate(self.target_rotation)
+        self.screen1.rotate(self.target_rotation)
+        self.screen2.rotate(self.target_rotation)
     
     def update_live_stats(self, message):
         """Update the live stats widget."""

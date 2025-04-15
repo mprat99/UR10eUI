@@ -107,20 +107,89 @@ class Screen0(QWidget):
     def rotate(self, angle):
         """Rotate the widgets by 1 degree every frame."""
         for widget in [self.widget1, self.widget2, self.widget3, self.widget4]:
-            widget.set_rotation(angle)
+            widget.rotate(angle)
 
         self.update()
 
 
 class LiveStatsWidget(QWidget):
+
     def __init__(self, svg_path, value_text, label_text, parent=None):
         super().__init__(parent)
         self.svg_renderer = QSvgRenderer(svg_path)
         self._value_text = value_text  # Use private attributes
         self._label_text = label_text
-        self.rotation_angle = 0  
+        self._rotation = 0  
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.update()
+
+    # Initialize the rotation animation
+        self.rotate_anim = QPropertyAnimation(self, b"rotation")
+        self._init_rotation_animation(self.rotate_anim)
+
+        self.update()
+    # Register the custom rotation property with pyqtProperty
+    def get_rotation(self):
+        return self._rotation
+
+    def set_rotation(self, angle):
+        """Set the rotation angle and trigger a repaint."""
+        self._rotation = angle
+        self.update()  # Repaint the widget with the new rotation angle
+
+    rotation = pyqtProperty(float, get_rotation, set_rotation)  # Register the property
+
+    def _init_rotation_animation(self, animation):
+        """Initialize the rotation animation for this widget."""
+        # animation.setDuration(500)  # Half second duration for smooth transition
+        # animation.setEasingCurve(QEasingCurve.Type.Linear)
+
+    # def rotate(self, target_angle):
+    #     """Rotate the widget by a smooth transition with threshold handling."""
+    #     # Get the current rotation angle
+    #     current_angle = self._rotation  
+
+    #     # Calculate the delta for rotation
+    #     delta_angle = target_angle - current_angle
+
+    #     # Threshold logic for rotation (only animate if difference is significant)
+    #     threshold = 5  # For example, 5 degrees threshold
+    #     if abs(delta_angle) > threshold:
+    #         self.rotate_anim.setDuration(16 * int(abs(delta_angle)/5))
+    #         self._animate_rotation(current_angle, target_angle)
+    #     else:
+    #         self.set_rotation(target_angle)
+
+    def rotate(self, target_rotation):
+
+        difference = int(abs(self._rotation - target_rotation))
+        if self.rotate_anim.state() == QPropertyAnimation.State.Running:
+            self._rotation = self.rotate_anim.currentValue()
+            self.rotate_anim.stop()
+
+        if difference > 10:
+            self.rotate_anim.setStartValue(self._rotation)
+            self.rotate_anim.setEndValue(target_rotation)
+            self.rotate_anim.setDuration(min(300, 10 * difference))
+            self.rotate_anim.finished.connect(self._on_rotation_animation_finished)
+            self.rotate_anim.start()
+        else:
+            self.set_rotation(target_rotation)
+
+
+    def _on_rotation_animation_finished(self):
+        self._rotation = self.rotate_anim.currentValue()
+
+    def _animate_rotation(self, start_angle, end_angle):
+        """Helper function to animate the rotation of this widget."""
+        self.rotate_anim.setStartValue(start_angle)
+        self.rotate_anim.setEndValue(end_angle)
+        self.rotate_anim.start()
+
+    # def set_rotation(self, angle):
+    #     """Directly set the rotation of this widget."""
+    #     self._rotation = angle
+    #     self.update()
 
     def set_value(self, value):
         """Update the numeric value and repaint."""
@@ -132,10 +201,10 @@ class LiveStatsWidget(QWidget):
         self._label_text = label
         self.update()
 
-    def set_rotation(self, angle):
-        """Set rotation and repaint."""
-        self.rotation_angle = angle
-        self.update()
+    # def set_rotation(self, angle):
+    #     """Set rotation and repaint."""
+    #     self._rotation = angle
+    #     self.update()
     
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -143,7 +212,7 @@ class LiveStatsWidget(QWidget):
 
          # Apply rotation
         painter.translate(self.width() / 2, self.height() / 2)
-        painter.rotate(self.rotation_angle)
+        painter.rotate(self._rotation)
         painter.translate(-self.width() / 2, -self.height() / 2)
 
         widget_width = self.width()
