@@ -26,6 +26,7 @@ class Screen2(QWidget):
         self.stacked_widget = QStackedWidget(self)
         self.stacked_widget.setStyleSheet("background: transparent; border: 0px;")
         self.stacked_widget.setFixedSize(300, 300)
+
         # Create the bar chart view.
         self.chart_view = BarChartView()
         self.chart_view.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -34,12 +35,10 @@ class Screen2(QWidget):
         self.info_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         # Add them to the stacked widget
-        self.stacked_widget.addWidget(self.chart_view)  # index 0
-        self.stacked_widget.addWidget(self.info_widget)   # index 1
+        self.stacked_widget.addWidget(self.chart_view)
+        self.stacked_widget.addWidget(self.info_widget)
 
-        # Wrap the circle container in a rotatable container.
-        # self.rot_container = RotatableContainer(self.chart_view)
-         # Wrap the stacked widget in a single RotatableContainer
+        # Wrap the stacked widget in a single RotatableContainer
         self.rot_container = RotatableContainer(self.stacked_widget)
 
         self.layout.addWidget(self.rot_container)
@@ -94,7 +93,7 @@ class Screen2(QWidget):
         self._rotation = angle
         self.rot_container.rotate(self._rotation)
 
-    rotation = pyqtProperty(float, get_rotation, set_rotation)  # Register the property
+    rotation = pyqtProperty(float, get_rotation, set_rotation)
 
     def update_state(self, message):
         """Update the state of the screen based on the received message."""

@@ -6,13 +6,20 @@ from PyQt6.QtGui import QIcon
 
 from ui.main_window import MainWindow
 from network.tcp_client import TCPClient
+from network.uart_client import UARTClient
+from config.settings import CLIENT_TYPE
+
 
 def main():
     # Create the application
     app = QApplication(sys.argv)
     
-    # Create the TCP client
-    client = TCPClient()
+    # Create the TCP or UART client
+    if CLIENT_TYPE == "TCP":
+        client = TCPClient()
+    else:
+        client = UARTClient()
+
     client.connect_to_robot()
 
     # Create and show the main window

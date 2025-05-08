@@ -10,11 +10,10 @@ from .widgets.ring_widget import RingWidget
 from .screens.screen0 import Screen0
 from .screens.screen1 import Screen1
 from .screens.screen2 import Screen2
-from network.tcp_client import TCPClient
 from utils.enums import MessageType, State
 
 class MainWindow(QMainWindow):
-    def __init__(self, client: TCPClient):
+    def __init__(self, client):
         super().__init__()
         self.setWindowTitle(WINDOW_TITLE)
         
@@ -183,8 +182,6 @@ class MainWindow(QMainWindow):
                 if (rotation := message.get("rotation")) is not None and isinstance(rotation, (int, float)):
                     self.target_rotation = rotation
                     self.rotate_ui()
-                    # self.current_rotation = rotation
-                    # self.rotation_timer.start(16)  # Rotate every 16ms (60 FPS)
             case MessageType.LIVE_STATS:
                 self.update_live_stats(message)
             case MessageType.GLOBAL_STATS:
@@ -207,15 +204,6 @@ class MainWindow(QMainWindow):
 
     def rotate_ui(self):
         """Smoothly rotate UI towards target rotation."""
-        # if self.current_rotation == self.target_rotation:
-        #     self.rotation_timer.stop()
-        #     return
-
-        # # Calculate increment direction
-        # increment = 1 if (self.target_rotation - self.current_rotation) % 360 < 180 else -1
-
-        # # Update rotation
-        # self.current_rotation = (self.current_rotation + increment) % 360
         self.screen0.rotate(self.target_rotation)
         self.screen1.rotate(self.target_rotation)
         self.screen2.rotate(self.target_rotation)

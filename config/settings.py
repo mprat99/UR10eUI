@@ -1,8 +1,16 @@
 """Configuration settings for the UR10e UI application."""
 
+
+CLIENT_TYPE = "TCP"
 # Network settings
 TCP_HOST = "localhost"
 TCP_PORT = 30003  # Default UR robot port
+
+#UART settings
+UART_PORT = "COM2"
+UART_BAUDRATE = 115200
+UART_RECONNECT_INTERVAL = 5000
+UART_READ_INTERVAL = 50
 
 # UI settings
 WINDOW_TITLE = "UR10e Interface"
