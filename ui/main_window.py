@@ -76,8 +76,8 @@ class MainWindow(QMainWindow):
         self.resize(default_width, default_height)
         
         # Position the window
-        # self.center_on_screen(display_mode="split")ç
-        self.center_on_screen()
+        self.setup_fullscreen_stacked_display()
+        # self.center_on_screen()
 
         # Connect to client message signal
         client.message_received.connect(self.check_message_type)
@@ -98,6 +98,16 @@ class MainWindow(QMainWindow):
         # test_timer.singleShot(20000, lambda: self.update_state({"type": "state", "state": "stopped"}))
         # test_timer.singleShot(23000, lambda: self.update_state({"type": "state", "state": "task_finished"}))
 
+    
+
+    def setup_fullscreen_stacked_display(self):
+        """Make the window span full screen across vertically stacked HDMI0 + HDMI1 displays."""
+        screen_geom = QGuiApplication.primaryScreen().geometry()
+
+        # Remove borders and go fullscreen
+        self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
+        self.setGeometry(screen_geom)
+        self.show()
 
     def center_on_screen(self):
         """Position the window on the right side of the screen."""
