@@ -13,6 +13,7 @@ from config.settings import CLIENT_TYPE
 def main():
     # Create the application
     app = QApplication(sys.argv)
+    app.setStyleSheet("QLabel { color: white; }")
     
     # Create the TCP or UART client
     if CLIENT_TYPE == "TCP":

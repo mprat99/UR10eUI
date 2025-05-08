@@ -16,7 +16,8 @@ class MainWindow(QMainWindow):
     def __init__(self, client):
         super().__init__()
         self.setWindowTitle(WINDOW_TITLE)
-        
+        self.setStyleSheet("background-color: black;")
+
         self.current_rotation = 0  # Current rotation of the UI
 
         self.state = State.NORMAL
