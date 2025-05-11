@@ -81,22 +81,10 @@ class MainWindow(QMainWindow):
 
         # Connect to client message signal
         client.message_received.connect(self.check_message_type)
-
-        # Create rotation timer
-        # self.rotation_timer = QTimer(self)
-        # self.rotation_timer.timeout.connect(self.rotate_ui)
         
         # Store rotation state
         self.current_rotation = 0
         self.target_rotation = 0
-        # self.rotation_timer.start(16)
-
-        # test_timer = QTimer(self)
-        # test_timer.singleShot(2000, lambda: self.update_state({"type": "state", "state": "reduced_speed"}))
-        # test_timer.singleShot(5000, lambda: self.update_state({"type": "state", "state": "normal"}))
-        # test_timer.singleShot(15000, lambda: self.update_state({"type": "state", "state": "reduced_speed"}))
-        # test_timer.singleShot(20000, lambda: self.update_state({"type": "state", "state": "stopped"}))
-        # test_timer.singleShot(23000, lambda: self.update_state({"type": "state", "state": "task_finished"}))
 
     
 

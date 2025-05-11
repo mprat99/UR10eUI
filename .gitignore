@@ -1,0 +1,29 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# VS / Windows stuff
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# PyInstaller
+build/
+dist/
+*.spec
+
+# Environment files
+.env
+*.env
+.venv/
+venv/
+ENV/
+
+# Logs and misc
+*.log
+.DS_Store
+*.bak
