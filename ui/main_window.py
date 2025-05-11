@@ -38,7 +38,7 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(container)
         
         # Create the ring widget
-        self.ring_widget = RingWidget(init_config)
+        # self.ring_widget = RingWidget(init_config)
         
         # Create a widget for the vertical content
         content_widget = QWidget()
@@ -67,7 +67,7 @@ class MainWindow(QMainWindow):
         stack_layout = QStackedLayout(container)
         stack_layout.setStackingMode(QStackedLayout.StackingMode.StackAll)  # Show all widgets
         stack_layout.addWidget(content_widget)        # Add content widget second (front)
-        stack_layout.addWidget(self.ring_widget)      # Add ring widget first (back)
+        # stack_layout.addWidget(self.ring_widget)      # Add ring widget first (back)
 
         # Set a reasonable default size (90% of the available height)
         screen = QGuiApplication.primaryScreen().availableGeometry()
@@ -76,22 +76,22 @@ class MainWindow(QMainWindow):
         self.resize(default_width, default_height)
         
         # Position the window
-        self.setup_fullscreen_stacked_display()
-        # self.center_on_screen()
+        # self.setup_fullscreen_stacked_display()
+        self.center_on_screen()
 
         # Connect to client message signal
         client.message_received.connect(self.check_message_type)
 
         # Create rotation timer
-        self.rotation_timer = QTimer(self)
-        self.rotation_timer.timeout.connect(self.rotate_ui)
+        # self.rotation_timer = QTimer(self)
+        # self.rotation_timer.timeout.connect(self.rotate_ui)
         
         # Store rotation state
         self.current_rotation = 0
         self.target_rotation = 0
         # self.rotation_timer.start(16)
 
-        test_timer = QTimer(self)
+        # test_timer = QTimer(self)
         # test_timer.singleShot(2000, lambda: self.update_state({"type": "state", "state": "reduced_speed"}))
         # test_timer.singleShot(5000, lambda: self.update_state({"type": "state", "state": "normal"}))
         # test_timer.singleShot(15000, lambda: self.update_state({"type": "state", "state": "reduced_speed"}))
@@ -101,13 +101,33 @@ class MainWindow(QMainWindow):
     
 
     def setup_fullscreen_stacked_display(self):
-        """Make the window span full screen across vertically stacked HDMI0 + HDMI1 displays."""
-        screen_geom = QGuiApplication.primaryScreen().geometry()
+        """Span the window across all vertically stacked screens."""
+        screens = QGuiApplication.screens()
 
-        # Remove borders and go fullscreen
+        if len(screens) < 2:
+            # Only one screen available — go fullscreen on it
+            self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
+            self.showFullScreen()
+            return
+
+        # Collect all screen geometries
+        geometries = [s.geometry() for s in screens]
+
+        # Get bounding rectangle (union of all screens)
+        min_x = min(geom.x() for geom in geometries)
+        max_x = max(geom.x() + geom.width() for geom in geometries)
+        min_y = min(geom.y() for geom in geometries)
+        max_y = max(geom.y() + geom.height() for geom in geometries)
+
+        combined_width = max_x - min_x
+        combined_height = max_y - min_y
+
+        # Set the window geometry to span the entire bounding box
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
-        self.setGeometry(screen_geom)
+        self.setGeometry(min_x, min_y, combined_width, combined_height)
         self.show()
+
+
 
     def center_on_screen(self):
         """Position the window on the right side of the screen."""

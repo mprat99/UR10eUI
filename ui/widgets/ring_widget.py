@@ -2,7 +2,7 @@
 
 from PyQt6.QtWidgets import QWidget
 from PyQt6.QtGui import QPainter, QColor, QRadialGradient, QBrush
-from PyQt6.QtCore import QTimer, QRectF, QPointF, Qt, QDateTime
+from PyQt6.QtCore import QTimer, QRectF, QPointF, Qt, QDateTime, QRect
 from utils.enums import State
 
 
@@ -74,7 +74,7 @@ class RingWidget(QWidget):
         
         # Timer to update the animation (~60 FPS)
         self.anim_timer = QTimer(self)
-        self.anim_timer.setInterval(16)
+        self.anim_timer.setInterval(33)
         self.anim_timer.timeout.connect(self.updateAnimation)
         self.anim_timer.start()
         
