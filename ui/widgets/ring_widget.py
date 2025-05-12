@@ -1,10 +1,6 @@
-"""Ring animation widget for the background of the UR10e UI."""
-
 from PyQt6.QtWidgets import QWidget
 from PyQt6.QtGui import QPainter, QColor, QRadialGradient, QBrush
-from PyQt6.QtCore import QTimer, QRectF, QPointF, Qt, QDateTime, QRect
-from utils.enums import State
-
+from PyQt6.QtCore import QTimer, QRectF, Qt, QDateTime, QPointF
 
 class RingState:
     def __init__(self, color, frequency, lifetime, speed, max_thickness, fade_in, fade_out):
@@ -16,136 +12,115 @@ class RingState:
         self.fade_in = fade_in
         self.fade_out = fade_out
 
-NORMAL_STATE = RingState((0, 255, 0), 3000, 6000, 0.05, 1000.0, 0.1, 0.9)
+NORMAL_STATE = RingState((0, 255, 0), 3000, 6000, 0.05, 4000.0, 0.1, 0.9)
 WARNING_STATE = RingState((255, 255, 0), 2000, 5000, 0.07, 800.0, 0.15, 0.85)
 ERROR_STATE = RingState((255, 0, 0), 1000, 3000, 0.1, 600.0, 0.2, 0.8)
 IDLE_STATE = RingState((0, 0, 255), 3000, 6000, 0.05, 1000.0, 0.1, 0.9)
 
 class Ring:
-    def __init__(self, state: RingState):
-        """
-        :param color: Base color for the ring.
-        :param lifetime: Lifetime in ms (default 3000ms).
-        :param speed: Expansion speed in pixels per ms. (Final radius = speed * lifetime)
-        :param max_thickness: Maximum thickness in pixels reached at the end of lifetime.
-        :param fade_in: Fraction of lifetime used to ramp up opacity.
-        :param fade_out: Fraction of lifetime used to ramp down opacity.
-        """
+    def __init__(self, state, center=None):
         self.state = state
+        self.center = center
         self.creation_time = QDateTime.currentMSecsSinceEpoch()
 
-    def progress(self) -> float:
-        """Return normalized progress (0 to 1) of the ring's lifetime."""
+    def progress(self):
         current_time = QDateTime.currentMSecsSinceEpoch()
         t = (current_time - self.creation_time) / self.state.lifetime
         return min(max(t, 0.0), 1.0)
 
-    def radius(self) -> float:
-        """Constant speed expansion: radius increases linearly with time."""
-        final_radius = self.state.speed * self.state.lifetime  # final radius after lifetime
-        return self.progress() * final_radius
+    def radius(self):
+        return self.progress() * self.state.speed * self.state.lifetime
 
-    def thickness(self) -> float:
-        """Linearly grow thickness from 0 to max_thickness over lifetime."""
+    def thickness(self):
         return self.progress() * self.state.max_thickness
 
-    def fade_factor(self) -> float:
-        """Compute an opacity factor that ramps up at the beginning and down at the end."""
+    def fade_factor(self):
         t = self.progress()
         if t < self.state.fade_in:
             return t / self.state.fade_in
         elif t > 1 - self.state.fade_out:
             return (1 - t) / self.state.fade_out
-        else:
-            return 1.0
+        return 1.0
 
 class RingWidget(QWidget):
-    def __init__(self, init_config):
+    def __init__(self, init_config, center=None):
         super().__init__()
-
-        # Set up the widget
-        self.setStyleSheet("background-color: black;")
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.setStyleSheet("background: transparent;")
+        
+        self.center_point = center if center else QPointF(self.width()/2, self.height()/2)
+        self.rings = []
         self.update_state(init_config)
-        
-        self.rings = []  # List of active rings
-        
-        # Create the first ring immediately
         self.createNewRing()
         
-        # Timer to update the animation (~60 FPS)
         self.anim_timer = QTimer(self)
-        self.anim_timer.setInterval(33)
         self.anim_timer.timeout.connect(self.updateAnimation)
-        self.anim_timer.start()
+        self.anim_timer.start(33)  # ~30 FPS
         
-        # Timer to create new rings at the specified frequency
         self.new_ring_timer = QTimer(self)
         self.new_ring_timer.timeout.connect(self.createNewRing)
         self.new_ring_timer.start(self.state.frequency)
-        
 
-    
     def createNewRing(self):
-        """Create a new ring with the current parameters."""
-        new_ring = Ring(self.state)
-        self.rings.append(new_ring)
-    
+        self.rings.append(Ring(self.state, self.center_point))
+
     def updateAnimation(self):
-        """Update rings and remove those that have completed their lifetime."""
         self.rings = [ring for ring in self.rings if ring.progress() < 1.0]
-        self.update()  # Trigger a repaint
-    
+        self.update()
+
     def paintEvent(self, event):
-        """Paint the rings."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        center = QPointF(self.width() / 2, self.height() / 2)
+        
+        center = self.center_point if self.center_point else QPointF(self.width()/2, self.height()/2)
         
         for ring in self.rings:
             R = ring.radius()
             T = ring.thickness()
             if T < 1.0:
-                continue  # Skip drawing if the ring is too thin
+                continue
+                
+            outer_radius = R + T/2
+            gradient = QRadialGradient(center.x(), center.y(), outer_radius)
+            inner_stop = max(0, R - T/2)/outer_radius
+            mid_stop = R/outer_radius
             
-            fade = ring.fade_factor()
             base_color = QColor(*ring.state.color)
-            base_color.setAlpha(int(base_color.alpha() * fade))
+            base_color.setAlpha(int(255 * ring.fade_factor()))
             
-            inner_radius = max(0, R - T / 2)
-            outer_radius = R + T / 2
-            
-            # Create a radial gradient
-            gradient = QRadialGradient(center, outer_radius)
-            inner_stop = inner_radius / outer_radius if outer_radius > 0 else 0
-            mid_stop = R / outer_radius if outer_radius > 0 else 0
             gradient.setColorAt(0.0, QColor(0, 0, 0, 0))
             gradient.setColorAt(inner_stop, QColor(0, 0, 0, 0))
             gradient.setColorAt(mid_stop, base_color)
             gradient.setColorAt(1.0, QColor(0, 0, 0, 0))
             
-            brush = QBrush(gradient)
-            painter.setBrush(brush)
+            painter.setBrush(QBrush(gradient))
             painter.setPen(Qt.PenStyle.NoPen)
-            
-            rect = QRectF(center.x() - outer_radius, center.y() - outer_radius,
-                         2 * outer_radius, 2 * outer_radius)
-            painter.drawEllipse(rect) 
+            painter.drawEllipse(QRectF(
+                center.x() - outer_radius,
+                center.y() - outer_radius,
+                2 * outer_radius,
+                2 * outer_radius
+            ))
 
     def update_state(self, message):
-        state = message.get("state")
-
-        match State(state):
-            case State.NORMAL:
-                self.state = NORMAL_STATE
-            case State.REDUCED_SPEED | State.WARNING:
-                self.state = WARNING_STATE
-            case State.STOPPED | State.ERROR:
-                self.state = ERROR_STATE
-            case State.IDLE | State.TASK_FINISHED | _:
-                self.state = IDLE_STATE
-       
-        if hasattr(self, "new_ring_timer"):
+        state = message.get("state", "normal")
+        
+        if state == "normal":
+            self.state = NORMAL_STATE
+        elif state in ["reduced_speed", "warning"]:
+            self.state = WARNING_STATE
+        elif state in ["stopped", "error"]:
+            self.state = ERROR_STATE
+        else:  # idle, task_finished, etc
+            self.state = IDLE_STATE
+        
+        if hasattr(self, 'new_ring_timer'):
             self.new_ring_timer.stop()
-            self.new_ring_timer.start(self.state.frequency)
-            self.anim_timer.stop()
-            self.anim_timer.start()
+            self.new_ring_timer.setInterval(self.state.frequency)
+            self.new_ring_timer.start()
+
+    def resizeEvent(self, event):
+        if not self.center_point:
+            self.center_point = QPointF(self.width()/2, self.height()/2)
+        super().resizeEvent(event)

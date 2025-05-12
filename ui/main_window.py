@@ -1,241 +1,63 @@
-"""Main window implementation for the UR10e UI."""
-
-from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, 
-                           QStackedLayout, QSizePolicy)
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QGuiApplication
-
-from config.settings import WINDOW_TITLE, WINDOW_ASPECT_RATIO
-from .widgets.ring_widget import RingWidget
-from .screens.screen0 import Screen0
-from .screens.screen1 import Screen1
-from .screens.screen2 import Screen2
-from utils.enums import MessageType, State
+# ui/main_window.py
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QSizePolicy, QLabel
+from ui.screens.screen0 import Screen0
+from ui.screens.screen1 import Screen1
+from ui.screens.screen2 import Screen2
 
 class MainWindow(QMainWindow):
-    def __init__(self, client):
+    key_pressed = pyqtSignal()
+    
+    def __init__(self, target_screen, screen_index, num_screens): # target_screen is a QScreen object
         super().__init__()
-        self.setWindowTitle(WINDOW_TITLE)
-        self.setStyleSheet("background-color: black;")
+        self.setWindowTitle(f"UI for Screen {screen_index} ({target_screen.name()})")
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setStyleSheet("background: transparent;") # Make main window background transparent
+        self.screen_index = screen_index
+        self.target_screen = target_screen # Store for reference if needed
+        self.num_screens = num_screens
+        self.init_ui()
 
-        self.current_rotation = 0  # Current rotation of the UI
-
-        self.state = State.NORMAL
-        init_config = {"state" : self.state}
-
-        # Create central widget
+    def init_ui(self):
         central_widget = QWidget()
+        # Central widget itself can be transparent or have its own background
+        central_widget.setStyleSheet("background: transparent;") 
+        layout = QVBoxLayout(central_widget)
+        layout.setContentsMargins(0, 0, 0, 0)
         self.setCentralWidget(central_widget)
-        
-        # Create main layout
-        main_layout = QVBoxLayout(central_widget)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(0)
-        
-        # Create a container widget that will hold both the ring and the content
-        container = QWidget()
-        container.setStyleSheet("background: transparent;")
-        main_layout.addWidget(container)
-        
-        # Create the ring widget
-        # self.ring_widget = RingWidget(init_config)
-        
-        # Create a widget for the vertical content
-        content_widget = QWidget()
-        content_widget.setStyleSheet("""
-            background: transparent;
-            padding: 0px;
-        """)
-        content_layout = QVBoxLayout(content_widget)
-        content_layout.setContentsMargins(0, 0, 0, 0)  # Thin margin around all screens
-        content_layout.setSpacing(0)  # Small gap between screens to create visual separation
-        
-        # Create the three screen widgets
-        self.screen0 = Screen0(init_config)
-        self.screen1 = Screen1(init_config)
-        self.screen2 = Screen2(init_config)
-        
-        # Set size policies to force equal heights regardless of content
-        for screen in [self.screen0, self.screen1, self.screen2]:
-            # Ignored in vertical direction means the widget's size hint and size policy are ignored
-            # The layout will force its size regardless of what the widget wants
-            screen.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Ignored)
-            screen.setMinimumHeight(0)  # Allow shrinking to any size
-            content_layout.addWidget(screen, 1)  # Equal stretch factor of 1
-        
-        # Stack the ring widget and content widget in the container
-        stack_layout = QStackedLayout(container)
-        stack_layout.setStackingMode(QStackedLayout.StackingMode.StackAll)  # Show all widgets
-        stack_layout.addWidget(content_widget)        # Add content widget second (front)
-        # stack_layout.addWidget(self.ring_widget)      # Add ring widget first (back)
 
-        # Set a reasonable default size (90% of the available height)
-        screen = QGuiApplication.primaryScreen().availableGeometry()
-        default_height = int(screen.height() * 0.9)
-        default_width = int(default_height / WINDOW_ASPECT_RATIO)
-        self.resize(default_width, default_height)
-        
-        # Position the window
-        # self.setup_fullscreen_stacked_display()
-        self.center_on_screen()
+        # Load correct screen content
+        content_widget = None
+        screen_classes_by_index = {
+            1: [Screen1],
+            2: [Screen1, Screen2],
+            3: [Screen0, Screen1, Screen2]
+        }
 
-        # Connect to client message signal
-        client.message_received.connect(self.check_message_type)
-        
-        # Store rotation state
-        self.current_rotation = 0
-        self.target_rotation = 0
+        default_class = Screen1
 
-    
-
-    def setup_fullscreen_stacked_display(self):
-        """Span the window across all vertically stacked screens."""
-        screens = QGuiApplication.screens()
-
-        if len(screens) < 2:
-            # Only one screen available — go fullscreen on it
-            self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
-            self.showFullScreen()
-            return
-
-        # Collect all screen geometries
-        geometries = [s.geometry() for s in screens]
-
-        # Get bounding rectangle (union of all screens)
-        min_x = min(geom.x() for geom in geometries)
-        max_x = max(geom.x() + geom.width() for geom in geometries)
-        min_y = min(geom.y() for geom in geometries)
-        max_y = max(geom.y() + geom.height() for geom in geometries)
-
-        combined_width = max_x - min_x
-        combined_height = max_y - min_y
-
-        # Set the window geometry to span the entire bounding box
-        self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
-        self.setGeometry(min_x, min_y, combined_width, combined_height)
-        self.show()
-
-
-
-    def center_on_screen(self):
-        """Position the window on the right side of the screen."""
-        screen = QGuiApplication.primaryScreen().availableGeometry()
-        
-        # Calculate position that puts the window on the right with margin
-        right_margin = 250  # pixels from right edge
-        x = screen.width() - self.width() - right_margin
-        y = (screen.height() - self.height()) // 2  # Still center vertically
-        
-        self.move(x, y)
-    # def center_on_screen(self, fullscreen=True, display_mode="split"):
-    #     """
-    #     Position the window according to the specified mode.
-    #     Args:
-    #         fullscreen (bool): Whether to display in fullscreen.
-    #         display_mode (str): "split" for both screens, "screen1" for first, "screen2" for second.
-    #     """
-    #     # Get the list of available screens
-    #     screens = QGuiApplication.screens()
-
-    #     if len(screens) < 2:
-    #         print("Less than two screens detected. Defaulting to fullscreen on one screen.")
-    #         self.showFullScreen()
-    #         return
-
-    #     # Get geometries of both screens
-    #     screen1 = screens[0].geometry()
-    #     screen2 = screens[1].geometry()
-
-    #     # Determine the screen order based on their vertical positions
-    #     if screen1.y() > screen2.y():
-    #         screen1, screen2 = screen2, screen1
-
-    #     # Remove window decorations for fullscreen mode
-    #     if fullscreen:
-    #         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
-
-    #     if display_mode == "split":
-    #         # Calculate the combined height and maximum width
-    #         total_height = screen1.height() + screen2.height()
-    #         max_width = max(screen1.width(), screen2.width())
-            
-    #         # Position the window to cover both screens, centered horizontally
-    #         x = min(screen1.x(), screen2.x()) + (max_width - self.width()) // 2
-    #         y = min(screen1.y(), screen2.y())
-
-    #         # Set the window geometry to span both screens
-    #         self.setGeometry(x, y, max_width, total_height)
-    #         self.showFullScreen()
-
-    #     elif display_mode == "screen1":
-    #         # Set geometry to exactly fit screen 1
-    #         self.setGeometry(screen1)
-    #         if fullscreen:
-    #             self.showFullScreen()
-    #         else:
-    #             self.show()
-
-    #     elif display_mode == "screen2":
-    #         # Set geometry to exactly fit screen 2
-    #         self.setGeometry(screen2)
-    #         if fullscreen:
-    #             self.showFullScreen()
-    #         else:
-    #             self.show()
-
-    #     else:
-    #         print(f"Unknown display mode: {display_mode}. Defaulting to split.")
-    #         self.setGeometry(x, y, max_width, total_height)
-    #         self.showFullScreen()
-
-
-
-    def check_message_type(self, message):
-        """Check the message type and update the UI accordingly."""
-        message_type = message.get("type")
-
-        match MessageType(message_type):
-            case MessageType.STATE:
-                self.update_state(message)
-            case MessageType.ROTATION:
-                if (rotation := message.get("rotation")) is not None and isinstance(rotation, (int, float)):
-                    self.target_rotation = rotation
-                    self.rotate_ui()
-            case MessageType.LIVE_STATS:
-                self.update_live_stats(message)
-            case MessageType.GLOBAL_STATS:
-                self.update_global_stats(message)
-            case _:
-                print(f"Unknown message type: {message_type}")
-    
-    def update_state(self, message):
-        """Change the state of the UI according to the current state of the robot."""
         try:
-            state = State(message.get("state"))
-            self.ring_widget.update_state(message)
-            QTimer.singleShot(1000, lambda: {self.screen0.update_state(message), 
-                                            self.screen1.update_state(message),
-                                        self.screen2.update_state(message)})
-        except (ValueError, KeyError) as e:
-            # Handle invalid/missing states
-            print(f"Invalid state received: Error: {str(e)}")
+            screen_list = screen_classes_by_index.get(self.num_screens, [default_class])
+            content_class = screen_list[self.screen_index]
+        except IndexError:
+            content_class = default_class
 
+        content_widget = content_class({"state": "normal"})
 
-    def rotate_ui(self):
-        """Smoothly rotate UI towards target rotation."""
-        self.screen0.rotate(self.target_rotation)
-        self.screen1.rotate(self.target_rotation)
-        self.screen2.rotate(self.target_rotation)
-    
-    def update_live_stats(self, message):
-        """Update the live stats widget."""
-        self.screen0.update_live_stats(message)
+        if content_widget:
+            content_widget.setSizePolicy(
+                QSizePolicy.Policy.Expanding,
+                QSizePolicy.Policy.Expanding
+            )
+            layout.addWidget(content_widget)
+        else:
+            fallback_label = QLabel(f"No content for screen index {self.screen_index}")
+            fallback_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            fallback_label.setStyleSheet("color: red; font-size: 20px;")
+            layout.addWidget(fallback_label)
 
-    def update_global_stats(self, message):
-        """Update the global stats widget."""
-        self.screen2.update_global_stats(message)
 
     def keyPressEvent(self, event):
-        """Handle key press events."""
         if event.key() == Qt.Key.Key_Escape:
-            self.close() 
+            self.key_pressed.emit()
+        super().keyPressEvent(event)

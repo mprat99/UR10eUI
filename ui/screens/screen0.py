@@ -11,7 +11,7 @@ class Screen0(QWidget):
     def __init__(self, state):
         super().__init__()
 
-        self.setStyleSheet("background-color: rgba(0, 0, 0, 0); border: 0px solid red;")
+        self.setStyleSheet("background-color: transparent; border: 0px solid red;")
 
         # Outer Layout: Centers the grid itself
         outer_layout = QHBoxLayout()
