@@ -1,12 +1,19 @@
 from PyQt6.QtCore import QTimer
 from utils.enums import MessageType
 from utils.enums import State
+from ui.screens.screen2 import Screen2
+from utils.utils import format_time_sec
+
 
 class UIController:
     def __init__(self, ring_widget, screen_windows):
         self.ring_widget = ring_widget
         self.screen_windows = screen_windows
         self.target_rotation = 0
+        self.state_timer = StateTimerManager()
+        self.stats_update_timer = QTimer()
+        self.stats_update_timer.timeout.connect(self.update_tracked_stats)
+        self.stats_update_timer.start(1000)
 
     def handle_message(self, message):
         """Central message handler for incoming client data."""
@@ -48,6 +55,17 @@ class UIController:
 
             QTimer.singleShot(1000, delayed_update)
 
+            mapped_state = None
+            if state == State.NORMAL:
+                mapped_state = "normal"
+            elif state in {State.REDUCED_SPEED, State.WARNING}:
+                mapped_state = "warning"
+            elif state in {State.STOPPED, State.ERROR}:
+                mapped_state = "error"
+
+            if mapped_state:
+                self.state_timer.set_state(mapped_state)
+
         except (ValueError, KeyError) as e:
             print(f"[UIController] Invalid or missing state: {e}")
 
@@ -79,3 +97,54 @@ class UIController:
     def handle_rotation(self, rotation):
         message = {"rotation": rotation}
         self.update_rotation(message)
+
+
+    def update_tracked_stats(self):
+        data = self.state_timer.get_bar_data()
+        for screen in self.screen_windows:
+            for attr in ["screen0_widget", "screen1_widget", "screen2_widget"]:
+                widget = getattr(screen, attr, None)
+                if isinstance(widget, Screen2):
+                    if hasattr(widget, "chart_view"):
+                        widget.chart_view.receive_data(data)
+
+
+class StateTimerManager:
+    def __init__(self):
+        self.state_durations = {
+            "normal": 1,
+            "warning": 0,
+            "error": 0
+        }
+        self.current_state = "normal"
+        self.timer = QTimer()
+        self.timer.timeout.connect(self._tick)
+        self.timer.start(1000)
+
+    def set_state(self, state: str):
+        if state != self.current_state:
+            self.current_state = state
+
+    def _tick(self):
+        if self.current_state == "normal":
+            self.state_durations["normal"] += 1
+        elif self.current_state == "warning":
+            self.state_durations["warning"] += 1
+        elif self.current_state == "error":
+            self.state_durations["error"] += 1
+
+    def get_bar_data(self):
+        total_sec = sum(self.state_durations.values())
+        return {
+            "chart": {
+                "units": "sec",
+                "bars": [
+                    {"label": "Max. Speed", "value": self.state_durations["normal"]},
+                    {"label": "Reduced Speed", "value": self.state_durations["warning"]},
+                    {"label": "Stopped", "value": self.state_durations["error"]},
+                ]
+            },
+            "statMetric": "Total Time",
+            "statValue": format_time_sec(total_sec), 
+            "statUnits": ""
+        }

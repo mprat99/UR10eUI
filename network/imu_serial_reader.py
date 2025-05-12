@@ -1,4 +1,5 @@
 import serial
+import time
 from PyQt6.QtCore import QThread, pyqtSignal
 from config.settings import IMU_SERIAL_PORT, IMU_SERIAL_BAUDRATE
 
@@ -10,19 +11,24 @@ class IMUSerialReader(QThread):
         self.port = port
         self.baudrate = baudrate
         self.running = True
+        self.reconnect_delay = 2  # seconds
 
     def run(self):
-        try:
-            with serial.Serial(self.port, self.baudrate, timeout=1) as ser:
-                while self.running:
-                    line = ser.readline().decode().strip()
-                    try:
-                        roll = float(line)
-                        self.rotation_received.emit(-roll)
-                    except ValueError:
-                        pass
-        except serial.SerialException as e:
-            print(f"Serial error: {e}")
+        while self.running:
+            try:
+                with serial.Serial(self.port, self.baudrate, timeout=1) as ser:
+                    print(f"[IMU] Connected to {self.port}")
+                    while self.running:
+                        line = ser.readline().decode(errors="ignore").strip()
+                        try:
+                            roll = float(line)
+                            self.rotation_received.emit(-roll)
+                        except ValueError:
+                            continue
+            except serial.SerialException as e:
+                print(f"[IMU] Serial error: {e}")
+                print(f"[IMU] Reattempting connection in {self.reconnect_delay} seconds...")
+                time.sleep(self.reconnect_delay)
 
     def stop(self):
         self.running = False

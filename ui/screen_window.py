@@ -63,6 +63,7 @@ class ScreenWindow(QMainWindow):
             )
             self.stack.addWidget(self.content_widget)
 
+
     def update_robot_state(self, new_state):
         self.robot_state = new_state
 
@@ -79,11 +80,11 @@ class ScreenWindow(QMainWindow):
         self.current_screen_state = 0
         self.stack.setCurrentIndex(self.current_screen_state)
         self.start_alternating_timer()
-        
+
     def start_alternating_timer(self):
         self.alternating_timer = QTimer(self)
         self.alternating_timer.timeout.connect(self.toggle_screen_content)
-        self.alternating_timer.start(5000)
+        self.alternating_timer.start(10000)
 
     def stop_alternating_timer(self):
         if hasattr(self, 'alternating_timer') and self.alternating_timer.isActive():

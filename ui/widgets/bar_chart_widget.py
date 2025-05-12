@@ -10,6 +10,7 @@ from PyQt6.QtCore import (
 )
 from config.settings import GREEN_COLOR, YELLOW_COLOR, RED_COLOR, BLUE_COLOR
 import random
+import utils.utils as utils
 
 # ----------------- Helper Classes -----------------
 class BarData:
@@ -104,34 +105,22 @@ class BarChartView(QGraphicsView):
         # Simulate initial data reception.
         sample_data = {
             "chart": {
-                "units": "min",
+                "units": "sec",
                 "bars": [
-                    {"label": "Max. Speed", "value": 99},
-                    {"label": "Reduced Speed", "value": 50},
-                    {"label": "Stopped", "value": 2}
+                    {"label": "Max. Speed", "value": 1},
+                    {"label": "Reduced Speed", "value": 0},
+                    {"label": "Stopped", "value": 0}
                 ]
             },
-            "statMetric": "Avg. Speed",
-            "statValue": "45",
-            "statUnits": "pick/min"
+            "statMetric": "Total Time",
+            "statValue": "1s",
+            "statUnits": ""
         }
         self.receive_data(sample_data)
         QTimer.singleShot(200, self._animate_bars)
-        sample_data = {
-            "chart": {
-                "units": "min",
-                "bars": [
-                    {"label": "Max. Speed", "value": 79},
-                    {"label": "Reduced Speed", "value": 90},
-                    {"label": "Stopped", "value": 50}
-                ]
-            },
-            "statMetric": "Avg. Speed",
-            "statValue": "45",
-            "statUnits": "pick/min"
-        }
-        QTimer.singleShot(6000, lambda: self.receive_data(sample_data))
-        QTimer.singleShot(6200, self._animate_bars)
+
+        # QTimer.singleShot(6000, lambda: self.receive_data(sample_data))
+        # QTimer.singleShot(6200, self._animate_bars)
 
 
     def receive_data(self, data: dict):
@@ -146,9 +135,7 @@ class BarChartView(QGraphicsView):
             chart = data["chart"]
             self.chart_units = chart.get("units", self.chart_units)
             if "bars" in chart:
-                # Save raw bar data (list of dicts with 'label' and 'value')
                 self.bar_data = [{"label": bar.get("label", ""), "value": bar.get("value", 0)} for bar in chart["bars"]]
-
         self._create_title()
         self._format_bars_data()
 
@@ -170,7 +157,7 @@ class BarChartView(QGraphicsView):
 
         # Create or update subtitle item.
         if not self.subtitle_item:
-            self.subtitle_item = self.scene.addText(subtitle_text, QFont("DM Sans", 18, QFont.Weight.Normal))
+            self.subtitle_item = self.scene.addText(subtitle_text, QFont("DM Sans", 16, QFont.Weight.Normal))
             self.subtitle_item.setDefaultTextColor(Qt.GlobalColor.white)
         else:
             self.subtitle_item.setPlainText(subtitle_text)
@@ -186,7 +173,9 @@ class BarChartView(QGraphicsView):
             label = bar["label"]
             value = bar["value"]
             if self.chart_units == "min":
-                formatted_value = self.format_time(value)
+                formatted_value = utils.format_time(value)
+            elif self.chart_units == "sec":
+                formatted_value = utils.format_time_sec(value)
             else:
                 formatted_value = f"{value} {self.chart_units}"
             # Use default color if available, otherwise random.
@@ -285,19 +274,4 @@ class BarChartView(QGraphicsView):
             # Store references to prevent garbage collection.
             animated_bar.animation = anim
             animated_text.animation = anim_text
-
-    def format_time(self, minutes):
-        """
-        Format time values into hours/minutes.
-        """
-        if minutes < 60:
-            return f"{minutes} min"
-        hours = minutes // 60
-        remaining_minutes = minutes % 60
-        if remaining_minutes == 0:
-            return f"{hours}h"
-        else:
-            return f"{hours}h {remaining_minutes} min"
-
-    
 
