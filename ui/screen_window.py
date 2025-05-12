@@ -21,6 +21,8 @@ class ScreenWindow(QMainWindow):
         self.target_screen = target_screen
         self.num_screens = num_screens
         self.current_screen_state = 0  # For QStackedLayout index
+        self.robot_state = "normal"
+
 
         self.init_ui()
 
@@ -61,14 +63,41 @@ class ScreenWindow(QMainWindow):
             )
             self.stack.addWidget(self.content_widget)
 
+    def update_robot_state(self, new_state):
+        self.robot_state = new_state
+
+        if self.num_screens == 2 and self.screen_index == 1:
+            if new_state in {"normal", "task_finished"}:
+                self.restart_alternating_timer()
+            else:
+                self.stop_alternating_timer()
+                self.stack.setCurrentWidget(self.screen2_widget)
+
+
+    def restart_alternating_timer(self):
+        self.stop_alternating_timer()
+        self.current_screen_state = 0
+        self.stack.setCurrentIndex(self.current_screen_state)
+        self.start_alternating_timer()
+        
     def start_alternating_timer(self):
         self.alternating_timer = QTimer(self)
         self.alternating_timer.timeout.connect(self.toggle_screen_content)
         self.alternating_timer.start(5000)
 
+    def stop_alternating_timer(self):
+        if hasattr(self, 'alternating_timer') and self.alternating_timer.isActive():
+            self.alternating_timer.stop()
+
+
     def toggle_screen_content(self):
-        self.current_screen_state = 1 - self.current_screen_state
-        self.stack.setCurrentIndex(self.current_screen_state)
+        if self.robot_state in {"normal", "task_finished"}:
+            self.current_screen_state = 1 - self.current_screen_state
+            self.stack.setCurrentIndex(self.current_screen_state)
+        else:
+            self.stack.setCurrentWidget(self.screen2_widget)
+            self.screen2_widget.set_state({"state": self.robot_state})
+
 
     def get_active_content_widget(self):
         # Return whichever widget is currently visible

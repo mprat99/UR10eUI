@@ -36,42 +36,6 @@ class RotatableContainer(QGraphicsView):
         # Disable scrollbars.
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-
-    #     # Animations setup
-    #     self.opacity_anim = QPropertyAnimation(self, b"opacity")
-    #     self.opacity_anim.setDuration(1500)
-    #     self.opacity_anim.setEasingCurve(QEasingCurve.Type.OutQuad)
-
-    #     self.scale_anim = QPropertyAnimation(self, b"scale")
-    #     self.scale_anim.setDuration(500)
-    #     self.scale_anim.setEasingCurve(QEasingCurve.Type.OutQuad)
-
-    # # Animation properties
-    # def get_opacity(self):
-    #     return self.proxy.opacity()
-
-    # def set_opacity(self, value):
-    #     self.proxy.setOpacity(value)
-
-    # opacity = pyqtProperty(float, get_opacity, set_opacity)
-
-    # def get_scale(self):
-    #     return self.proxy.scale()
-
-    # def set_scale(self, value):
-    #     self.proxy.setScale(value)
-
-    # scale = pyqtProperty(float, get_scale, set_scale)
-    
-    # def start_animations(self):
-    #     # Reset and start animations
-    #     self.opacity_anim.setStartValue(0.0)
-    #     self.opacity_anim.setEndValue(1.0)
-    #     self.scale_anim.setStartValue(1.05)
-    #     self.scale_anim.setEndValue(1.0)
-
-    #     self.opacity_anim.start()
-    #     self.scale_anim.start()
         
     def rotate(self, angle: float):
         self.proxy.setRotation(angle)

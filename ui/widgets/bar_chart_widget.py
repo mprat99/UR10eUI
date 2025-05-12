@@ -299,9 +299,5 @@ class BarChartView(QGraphicsView):
         else:
             return f"{hours}h {remaining_minutes} min"
 
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        # Scale the fixed design canvas (300x300) to fill the available space.
-        self.fitInView(self.scene.sceneRect(), Qt.AspectRatioMode.KeepAspectRatio)
-
+    
 

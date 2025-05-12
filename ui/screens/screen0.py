@@ -56,7 +56,7 @@ class Screen0(QWidget):
         self.update()  # Repaint with new scale
 
     scale = pyqtProperty(float, get_scale, set_scale)
-
+    
     def update_state(self, message):
         """Update speed SVG."""
         state = message.get("state")
@@ -125,7 +125,7 @@ class LiveStatsWidget(QWidget):
 
     # Initialize the rotation animation
         self.rotate_anim = QPropertyAnimation(self, b"rotation")
-        self._init_rotation_animation(self.rotate_anim)
+
 
         self.update()
     # Register the custom rotation property with pyqtProperty
@@ -139,26 +139,6 @@ class LiveStatsWidget(QWidget):
 
     rotation = pyqtProperty(float, get_rotation, set_rotation)  # Register the property
 
-    def _init_rotation_animation(self, animation):
-        """Initialize the rotation animation for this widget."""
-        # animation.setDuration(500)  # Half second duration for smooth transition
-        # animation.setEasingCurve(QEasingCurve.Type.Linear)
-
-    # def rotate(self, target_angle):
-    #     """Rotate the widget by a smooth transition with threshold handling."""
-    #     # Get the current rotation angle
-    #     current_angle = self._rotation  
-
-    #     # Calculate the delta for rotation
-    #     delta_angle = target_angle - current_angle
-
-    #     # Threshold logic for rotation (only animate if difference is significant)
-    #     threshold = 5  # For example, 5 degrees threshold
-    #     if abs(delta_angle) > threshold:
-    #         self.rotate_anim.setDuration(16 * int(abs(delta_angle)/5))
-    #         self._animate_rotation(current_angle, target_angle)
-    #     else:
-    #         self.set_rotation(target_angle)
 
     def rotate(self, target_rotation):
 
@@ -186,11 +166,6 @@ class LiveStatsWidget(QWidget):
         self.rotate_anim.setEndValue(end_angle)
         self.rotate_anim.start()
 
-    # def set_rotation(self, angle):
-    #     """Directly set the rotation of this widget."""
-    #     self._rotation = angle
-    #     self.update()
-
     def set_value(self, value):
         """Update the numeric value and repaint."""
         self._value_text = str(value)  # Ensure it's a string
@@ -200,11 +175,6 @@ class LiveStatsWidget(QWidget):
         """Update the label text and repaint."""
         self._label_text = label
         self.update()
-
-    # def set_rotation(self, angle):
-    #     """Set rotation and repaint."""
-    #     self._rotation = angle
-    #     self.update()
     
     def paintEvent(self, event):
         painter = QPainter(self)

@@ -13,9 +13,9 @@ class RingState:
         self.fade_out = fade_out
 
 NORMAL_STATE = RingState((0, 255, 0), 3000, 6000, 0.05, 4000.0, 0.1, 0.9)
-WARNING_STATE = RingState((255, 255, 0), 2000, 5000, 0.07, 800.0, 0.15, 0.85)
-ERROR_STATE = RingState((255, 0, 0), 1000, 3000, 0.1, 600.0, 0.2, 0.8)
-IDLE_STATE = RingState((0, 0, 255), 3000, 6000, 0.05, 1000.0, 0.1, 0.9)
+WARNING_STATE = RingState((255, 255, 0), 2000, 5000, 0.07, 4000.0, 0.15, 0.85)
+ERROR_STATE = RingState((255, 0, 0), 1000, 3000, 0.1, 4000.0, 0.2, 0.8)
+IDLE_STATE = RingState((0, 0, 255), 3000, 6000, 0.05, 4000.0, 0.1, 0.9)
 
 class Ring:
     def __init__(self, state, center=None):

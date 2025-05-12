@@ -55,7 +55,6 @@ class TCPClient(QObject):
             try:
                 # Decode and parse JSON
                 message = json.loads(msg_bytes.decode('utf-8'))
-                print(message)
                 self.message_received.emit(message)
             except UnicodeDecodeError:
                 self.error_occurred.emit(f"Invalid UTF-8 in message: {msg_bytes}")
