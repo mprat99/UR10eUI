@@ -1,7 +1,7 @@
 import serial
 import time
 from PyQt6.QtCore import QThread, pyqtSignal
-from config.settings import IMU_SERIAL_PORT, IMU_SERIAL_BAUDRATE
+from config.settings import IMU_SERIAL_PORT, IMU_SERIAL_BAUDRATE, AXIS_SIGN, ROTATION_OFFSET
 
 class IMUSerialReader(QThread):
     rotation_received = pyqtSignal(float)  # Signal to emit roll angle
@@ -22,7 +22,7 @@ class IMUSerialReader(QThread):
                         line = ser.readline().decode(errors="ignore").strip()
                         try:
                             roll = float(line)
-                            self.rotation_received.emit(-roll)
+                            self.rotation_received.emit(AXIS_SIGN * roll + ROTATION_OFFSET)
                         except ValueError:
                             continue
             except serial.SerialException as e:

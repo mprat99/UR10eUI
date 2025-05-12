@@ -6,7 +6,7 @@ from ui.screen_window import ScreenWindow
 from ui.widgets.ring_widget import RingWidget
 from network.tcp_client import TCPClient
 from network.uart_client import UARTClient
-from config.settings import CLIENT_TYPE
+from config.settings import CLIENT_TYPE, ROTATION_FROM_IMU
 from ui.main_ui import launch_ui
 from ui.ui_controller import UIController
 from network.imu_serial_reader import IMUSerialReader
@@ -43,8 +43,11 @@ def main():
     # Create and connect UI controller
     controller = UIController(ring_widget, screen_windows)
     client.message_received.connect(controller.handle_message)
-    serial_reader.rotation_received.connect(controller.handle_rotation)
-    serial_reader.start()
+
+    if ROTATION_FROM_IMU:
+        serial_reader.rotation_received.connect(controller.handle_rotation)
+        serial_reader.start()
+        
     app.exec()
 
 if __name__ == "__main__":
