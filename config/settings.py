@@ -3,8 +3,9 @@
 
 CLIENT_TYPE = "TCP"
 # Network settings
-TCP_HOST = "localhost"
+TCP_HOST = "192.168.1.218"
 TCP_PORT = 30003  # Default UR robot port
+TCP_MESSAGE_DELIMITER = b'\n'
 
 #UART settings
 UART_PORT = "COM2"

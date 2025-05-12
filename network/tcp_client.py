@@ -1,7 +1,7 @@
 import json
 from PyQt6.QtCore import QObject, pyqtSignal, QTimer
 from PyQt6.QtNetwork import QTcpSocket, QAbstractSocket
-from config.settings import TCP_HOST, TCP_PORT
+from config.settings import TCP_HOST, TCP_PORT, TCP_MESSAGE_DELIMITER   
 
 RECONNECT_INTERVAL = 5000  # milliseconds
 
@@ -41,8 +41,9 @@ class TCPClient(QObject):
         
         # Process all complete messages (ending with \r)
         while True:
-            # Find the first \r delimiter
-            pos = self._buffer.find(b'\r')
+            # Find the first \r delimite
+            # r
+            pos = self._buffer.find(TCP_MESSAGE_DELIMITER)
             if pos == -1:
                 break  # No complete messages remaining
                 
@@ -54,6 +55,7 @@ class TCPClient(QObject):
             try:
                 # Decode and parse JSON
                 message = json.loads(msg_bytes.decode('utf-8'))
+                print(message)
                 self.message_received.emit(message)
             except UnicodeDecodeError:
                 self.error_occurred.emit(f"Invalid UTF-8 in message: {msg_bytes}")
