@@ -43,16 +43,13 @@ class UIController:
             state = State(message.get("state"))
             self.ring_widget.update_state(message)
 
-            def delayed_update():
-                for screen in self.screen_windows:
-                    if hasattr(screen, "update_robot_state"):
-                        screen.update_robot_state(message.get("state"))
+            for screen in self.screen_windows:
+                if hasattr(screen, "update_robot_state"):
+                    screen.update_robot_state(message.get("state"))
 
-                    # Update all widgets on the screen if alternating
-                    for widget in self._get_all_screen_widgets(screen):
-                        widget.update_state(message)
-
-            QTimer.singleShot(1000, delayed_update)
+                # Update all widgets on the screen if alternating
+                for widget in self._get_all_screen_widgets(screen):
+                    widget.update_state(message)
 
             if INTERNAL_TIME_COUNTER:
                 mapped_state = None
@@ -98,8 +95,28 @@ class UIController:
                 if isinstance(widget, BarChartInfoScreen) and hasattr(widget, "chart_view"):
                     widget.chart_view.receive_data(data)
 
-    def handle_rotation(self, rotation):
+    def handle_rotation_serial(self, rotation):
         self.update_rotation({"rotation": rotation})
+
+    def handle_state_serial(self, state):
+        state_map = {
+            1: "reduced_speed",
+            2: "normal",
+            3: "stopped"
+        }
+
+        mapped_state = state_map.get(state, 2)
+        if mapped_state is not None:
+            message = {
+                "type": "state",
+                "state": mapped_state
+            }
+            self.update_state(message)
+        else:
+            print(f"[Warning] Unknown state received from serial: {state}")
+
+
+
 
     def _get_all_screen_widgets(self, screen):
         """Returns all widgets on a screen — visible and alternate."""

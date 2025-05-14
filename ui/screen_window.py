@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QSizePolicy, QStackedLayout
 )
 
-from config.settings import SCREEN_CLASSES_BY_INDEX
+from config.settings import SCREEN_CLASSES_BY_INDEX, LIVE_STATS_AVAILABLE
 from ui.screens.ring_screen import RingScreen
 from ui.screens.live_stats_screen import LiveStatsScreen
 from ui.screens.bar_chart_info_screen import BarChartInfoScreen
@@ -58,8 +58,9 @@ class ScreenWindow(QMainWindow):
             self.stack.addWidget(self.alt_widget_0)  # index 0
             self.stack.addWidget(self.alt_widget_1)  # index 1
             self.stack.setCurrentIndex(0)
-
-            self.start_alternating_timer()
+        
+            if LIVE_STATS_AVAILABLE:
+                self.start_alternating_timer()
         else:
             # Show a single widget
             class_name = screen_config if isinstance(screen_config, str) else "RingScreen"
@@ -100,7 +101,7 @@ class ScreenWindow(QMainWindow):
         self.robot_state = new_state
 
         if hasattr(self, 'alt_widget_0'):
-            if new_state in {"normal", "task_finished"}:
+            if new_state in {"normal", "task_finished"} and LIVE_STATS_AVAILABLE:
                 self.restart_alternating_timer()
             else:
                 self.stop_alternating_timer()

@@ -21,7 +21,7 @@ class RingScreen(QWidget):
 
         # Fixed design size parameters
         self.design_size = 300
-        self.title_font_size = 23
+        self.title_font_size = 21
         self.subtitle_font_size = 18
 
         # Main graphics view setup
@@ -43,12 +43,13 @@ class RingScreen(QWidget):
         self.container.setPos(self.design_size/2, self.design_size/2)  # Center in scene
 
         # SVG setup
+        self.svg_size = int(self.design_size * 0.9)
         self.svg_item = QSvgWidget()
         self.svg_item.setStyleSheet("background: transparent")
-        self.svg_item.setFixedSize(self.design_size, self.design_size)
+        self.svg_item.setFixedSize(self.svg_size, self.svg_size)
         self.svg_proxy = self.scene.addWidget(self.svg_item)
         self.svg_proxy.setParentItem(self.container)
-        self.svg_proxy.setPos(-self.design_size/2, -self.design_size/2)  # Center in container
+        self.svg_proxy.setPos(-self.svg_size/2, -self.svg_size/2)  # Center in container
 
         # Text items
         self.title_item = self.scene.addText("", QFont("DM Sans", self.title_font_size, QFont.Weight.Bold))

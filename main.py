@@ -5,7 +5,7 @@ from network.uart_client import UARTClient
 from config.settings import CLIENT_TYPE, ROTATION_FROM_IMU
 from ui.ui_setup import launch_ui
 from ui.ui_controller import UIController
-from network.imu_serial_reader import IMUSerialReader
+from network.serial_reader import SerialReader
 
 def main():
     app = QApplication(sys.argv)
@@ -22,7 +22,7 @@ def main():
     client.connect_to_robot()
 
     try:
-        serial_reader = IMUSerialReader()
+        serial_reader = SerialReader()
     except Exception as e:
         print(f"Error initializing SerialReader: {e}")
 
@@ -41,7 +41,8 @@ def main():
     client.message_received.connect(controller.handle_message)
 
     if ROTATION_FROM_IMU:
-        serial_reader.rotation_received.connect(controller.handle_rotation)
+        serial_reader.rotation_received.connect(controller.handle_rotation_serial)
+        serial_reader.state_received.connect(controller.handle_state_serial)
         serial_reader.start()
         
     app.exec()
