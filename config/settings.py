@@ -3,7 +3,7 @@
 
 CLIENT_TYPE = "TCP"
 # Network settings
-TCP_HOST = "192.168.1.218"
+TCP_HOST = "192.168.0.66"
 TCP_PORT = 30003
 TCP_MESSAGE_DELIMITER = b'\n'
 INTERNAL_TIME_COUNTER = True
@@ -18,6 +18,7 @@ UART_READ_INTERVAL = 10
 ROTATION_FROM_IMU = True
 AXIS_SIGN = -1
 ROTATION_OFFSET = -1.7
+ROTATION_THRESHOLD = 0.5
 IMU_SERIAL_PORT = "COM7"
 IMU_SERIAL_BAUDRATE = 115200
 
@@ -30,8 +31,24 @@ RED_COLOR = "#FF0000"
 BLUE_COLOR = "#0000FF"
 
 # Window settings
-WINDOW_ASPECT_RATIO = 9/4  # Height to width ratio (9 times taller than wider)
+UI_SCREEN_INDICES = [0]
 
-# Section widget settings
-SECTION_ASPECT_RATIO = 3/4  # Height to width ratio for section widgets
-SECTION_MARGIN = 0         # Margin between sections in pixels 
+WINDOW_ASPECT_RATIO = 9/4 
+SECTION_ASPECT_RATIO = 3/4
+SECTION_MARGIN = 0        
+
+# Layout config
+SCREEN_CLASSES_BY_INDEX = {
+    1: ["RingScreen"],
+
+    2: [
+        "RingScreen",
+        ["BarChartInfoScreen", "LiveStatsScreen"]
+    ],
+
+    3: [
+        "LiveStatsScreen",
+        "RingScreen",
+        "BarChartInfoScreen"
+    ]
+}

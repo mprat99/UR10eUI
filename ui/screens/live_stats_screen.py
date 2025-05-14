@@ -6,7 +6,7 @@ from PyQt6.QtGui import QPainter, QPixmap, QFont
 from PyQt6.QtCore import QRectF, QPointF, QTimer,QPropertyAnimation, pyqtProperty, QEasingCurve
 from utils.enums import State
 
-class Screen0(QWidget):
+class LiveStatsScreen(QWidget):
     """Screen 0 with a 2x2 grid of widgets, centered properly with fixed spacing."""
     def __init__(self, state):
         super().__init__()
@@ -135,9 +135,9 @@ class LiveStatsWidget(QWidget):
     def set_rotation(self, angle):
         """Set the rotation angle and trigger a repaint."""
         self._rotation = angle
-        self.update()  # Repaint the widget with the new rotation angle
+        self.update() 
 
-    rotation = pyqtProperty(float, get_rotation, set_rotation)  # Register the property
+    rotation = pyqtProperty(float, get_rotation, set_rotation)
 
 
     def rotate(self, target_rotation):
@@ -168,7 +168,7 @@ class LiveStatsWidget(QWidget):
 
     def set_value(self, value):
         """Update the numeric value and repaint."""
-        self._value_text = str(value)  # Ensure it's a string
+        self._value_text = str(value) 
         self.update()
 
     def set_label(self, label):
@@ -194,7 +194,7 @@ class LiveStatsWidget(QWidget):
 
         # Fit SVG within widget bounds
         if widget_width / widget_height > svg_aspect_ratio:
-            svg_height = widget_height * 0.9  # Reduce height to leave space for label
+            svg_height = widget_height * 0.9 
             svg_width = svg_height * svg_aspect_ratio
         else:
             svg_width = widget_width * 0.9
@@ -202,7 +202,7 @@ class LiveStatsWidget(QWidget):
 
         # Center SVG
         svg_x = (widget_width - svg_width) / 2
-        svg_y = (widget_height - svg_height) * 0.2  # Move up slightly
+        svg_y = (widget_height - svg_height) * 0.2 
         svg_rect = QRectF(svg_x, svg_y, svg_width, svg_height)
         self.svg_renderer.render(painter, svg_rect)
 
@@ -227,5 +227,5 @@ class LiveStatsWidget(QWidget):
 
         # Place label text within the widget, just below the SVG
         label_bounds = QRectF(svg_rect)
-        label_bounds = label_bounds.adjusted(0, svg_height * 0.23, 0, svg_height * 0.58)  # Shift within bounds
+        label_bounds = label_bounds.adjusted(0, svg_height * 0.23, 0, svg_height * 0.58) 
         painter.drawText(label_bounds, Qt.AlignmentFlag.AlignCenter, self._label_text)

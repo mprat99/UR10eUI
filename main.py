@@ -1,13 +1,9 @@
 import sys
-from PyQt6.QtWidgets import QApplication, QMainWindow
-from PyQt6.QtCore import Qt, QRect, QPointF
-from PyQt6.QtGui import QGuiApplication
-from ui.screen_window import ScreenWindow
-from ui.widgets.ring_widget import RingWidget
+from PyQt6.QtWidgets import QApplication
 from network.tcp_client import TCPClient
 from network.uart_client import UARTClient
 from config.settings import CLIENT_TYPE, ROTATION_FROM_IMU
-from ui.main_ui import launch_ui
+from ui.ui_setup import launch_ui
 from ui.ui_controller import UIController
 from network.imu_serial_reader import IMUSerialReader
 

@@ -11,7 +11,7 @@ from PyQt6.QtGui import (
 )
 from utils.enums import State
 
-class Screen1(QWidget):
+class RingScreen(QWidget):
 
     def __init__(self, init_config, parent=None):
         super().__init__(parent)

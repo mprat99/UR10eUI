@@ -14,7 +14,7 @@ from utils.enums import State
 
 
 # ----------------- Screen -----------------
-class Screen2(QWidget):
+class BarChartInfoScreen(QWidget):
     def __init__(self, init_config):
         super().__init__()
         self.setStyleSheet("background-color: rgba(0, 0, 0, 50);")

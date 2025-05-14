@@ -1,17 +1,17 @@
 from PyQt6.QtCore import QTimer
 from utils.enums import MessageType
 from utils.enums import State
-from ui.screens.screen0 import Screen0
-from ui.screens.screen2 import Screen2
+from ui.screens.live_stats_screen import LiveStatsScreen
+from ui.screens.bar_chart_info_screen import BarChartInfoScreen
 from utils.utils import format_time_sec
-from config.settings import INTERNAL_TIME_COUNTER
+from config.settings import INTERNAL_TIME_COUNTER, ROTATION_THRESHOLD
 
 
 class UIController:
     def __init__(self, ring_widget, screen_windows):
         self.ring_widget = ring_widget
         self.screen_windows = screen_windows
-        self.target_rotation = 0
+        self.current_rotation = 0
 
         if INTERNAL_TIME_COUNTER:
             self.state_timer = StateTimerManager()
@@ -37,25 +37,20 @@ class UIController:
                     print(f"[UIController] Unknown message type: {message_type}")
         except ValueError as e:
             print(f"[UIController] Invalid message type: {e}")
-
+            
     def update_state(self, message):
-        """Update the UI and ring for a new robot state."""
         try:
-            state = State(message.get("state"))  # validate
+            state = State(message.get("state"))
             self.ring_widget.update_state(message)
 
-            # Delay screen updates to sync with ring animation
             def delayed_update():
                 for screen in self.screen_windows:
                     if hasattr(screen, "update_robot_state"):
                         screen.update_robot_state(message.get("state"))
 
-                    # Update all widgets, not just the visible one
-                    if screen.num_screens == 2 and screen.screen_index == 1:
-                        screen.screen0_widget.update_state(message)
-                        screen.screen2_widget.update_state(message)
-                    else:
-                        screen.get_active_content_widget().update_state(message)
+                    # Update all widgets on the screen if alternating
+                    for widget in self._get_all_screen_widgets(screen):
+                        widget.update_state(message)
 
             QTimer.singleShot(1000, delayed_update)
 
@@ -77,47 +72,51 @@ class UIController:
             print(f"[UIController] Invalid or missing state: {e}")
 
     def update_rotation(self, message):
-        """Apply rotation to all relevant widgets, visible or not."""
         rotation = message.get("rotation")
-        if isinstance(rotation, (int, float)) and abs(rotation - self.target_rotation) > 0.1:
-            self.target_rotation = rotation
+        if isinstance(rotation, (int, float)) and abs(rotation - self.current_rotation) > ROTATION_THRESHOLD:
+            self.current_rotation = rotation
             for screen in self.screen_windows:
-                # Special case for alternating screen (index 1 with 2 screens)
-                if screen.num_screens == 2 and screen.screen_index == 1:
-                    screen.screen0_widget.rotate(rotation)
-                    screen.screen2_widget.rotate(rotation)
-                else:
-                    screen.get_active_content_widget().rotate(rotation)
+                for widget in self._get_all_screen_widgets(screen):
+                    widget.rotate(rotation)
 
     def update_live_stats(self, message):
-        """Send live stats to Screen0."""
         for screen in self.screen_windows:
-            for attr in ["screen0_widget", "screen1_widget", "screen2_widget"]:
-                widget = getattr(screen, attr, None)
-                if isinstance(widget, Screen0):
+            for widget in self._get_all_screen_widgets(screen):
+                if isinstance(widget, LiveStatsScreen):
                     widget.update_live_stats(message)
 
     def update_global_stats(self, message):
-        """Send global stats to Screen2."""
         for screen in self.screen_windows:
-            for attr in ["screen0_widget", "screen1_widget", "screen2_widget"]:
-                widget = getattr(screen, attr, None)
-                if isinstance(widget, Screen2):
+            for widget in self._get_all_screen_widgets(screen):
+                if isinstance(widget, BarChartInfoScreen):
                     widget.update_global_stats(message)
-
-    def handle_rotation(self, rotation):
-        message = {"rotation": rotation}
-        self.update_rotation(message)
-
 
     def update_tracked_stats(self):
         data = self.state_timer.get_bar_data()
         for screen in self.screen_windows:
-            for attr in ["screen0_widget", "screen1_widget", "screen2_widget"]:
-                widget = getattr(screen, attr, None)
-                if isinstance(widget, Screen2):
-                    if hasattr(widget, "chart_view"):
-                        widget.chart_view.receive_data(data)
+            for widget in self._get_all_screen_widgets(screen):
+                if isinstance(widget, BarChartInfoScreen) and hasattr(widget, "chart_view"):
+                    widget.chart_view.receive_data(data)
+
+    def handle_rotation(self, rotation):
+        self.update_rotation({"rotation": rotation})
+
+    def _get_all_screen_widgets(self, screen):
+        """Returns all widgets on a screen — visible and alternate."""
+        widgets = []
+
+        # Alternating screen: both widgets exist
+        if hasattr(screen, "alt_widget_0"):
+            widgets.append(screen.alt_widget_0)
+        if hasattr(screen, "alt_widget_1"):
+            widgets.append(screen.alt_widget_1)
+
+        # Single widget screen
+        elif hasattr(screen, "content_widget"):
+            widgets.append(screen.content_widget)
+
+        return widgets
+
 
 
 class StateTimerManager:

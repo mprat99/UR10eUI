@@ -2,12 +2,21 @@
 
 from PyQt6.QtCore import Qt, pyqtSignal, QTimer
 from PyQt6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QSizePolicy,
-    QStackedLayout
+    QMainWindow, QWidget, QSizePolicy, QStackedLayout
 )
-from ui.screens.screen0 import Screen0
-from ui.screens.screen1 import Screen1
-from ui.screens.screen2 import Screen2
+
+from config.settings import SCREEN_CLASSES_BY_INDEX
+from ui.screens.ring_screen import RingScreen
+from ui.screens.live_stats_screen import LiveStatsScreen
+from ui.screens.bar_chart_info_screen import BarChartInfoScreen
+
+# Maps string names from settings to actual widget classes
+CLASS_MAP = {
+    "RingScreen": RingScreen,
+    "LiveStatsScreen": LiveStatsScreen,
+    "BarChartInfoScreen": BarChartInfoScreen,
+}
+
 
 class ScreenWindow(QMainWindow):
     key_pressed = pyqtSignal()
@@ -17,12 +26,12 @@ class ScreenWindow(QMainWindow):
         self.setWindowTitle(f"UI for Screen {screen_index} ({target_screen.name()})")
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setStyleSheet("background: transparent;")
-        self.screen_index = screen_index
-        self.target_screen = target_screen
-        self.num_screens = num_screens
-        self.current_screen_state = 0  # For QStackedLayout index
-        self.robot_state = "normal"
 
+        self.screen_index = screen_index
+        self.num_screens = num_screens
+        self.robot_state = "normal"
+        self.current_screen_state = 0
+        self.client = client
 
         self.init_ui()
 
@@ -34,27 +43,27 @@ class ScreenWindow(QMainWindow):
         self.stack = QStackedLayout()
         central_widget.setLayout(self.stack)
 
-        if self.num_screens == 2 and self.screen_index == 1:
-            self.screen2_widget = Screen2({"state": "normal"})
-            self.screen0_widget = Screen0({"state": "normal"})
+        # Load screen configuration from settings
+        layout_config = SCREEN_CLASSES_BY_INDEX.get(self.num_screens, [])
+        screen_config = layout_config[self.screen_index] if self.screen_index < len(layout_config) else "RingScreen"
 
-            self.stack.addWidget(self.screen2_widget)  # index 0
-            self.stack.addWidget(self.screen0_widget)  # index 1
+        # If screen_config is a list, assume alternating widgets
+        if isinstance(screen_config, list) and len(screen_config) == 2:
+            class1 = CLASS_MAP.get(screen_config[0], RingScreen)
+            class2 = CLASS_MAP.get(screen_config[1], RingScreen)
+
+            self.alt_widget_0 = class1({"state": "normal"})
+            self.alt_widget_1 = class2({"state": "normal"})
+
+            self.stack.addWidget(self.alt_widget_0)  # index 0
+            self.stack.addWidget(self.alt_widget_1)  # index 1
             self.stack.setCurrentIndex(0)
 
             self.start_alternating_timer()
         else:
-            screen_classes_by_index = {
-                1: [Screen1],
-                2: [Screen1, Screen2],
-                3: [Screen0, Screen1, Screen2]
-            }
-            default_class = Screen1
-            try:
-                screen_list = screen_classes_by_index.get(self.num_screens, [default_class])
-                content_class = screen_list[self.screen_index]
-            except IndexError:
-                content_class = default_class
+            # Show a single widget
+            class_name = screen_config if isinstance(screen_config, str) else "RingScreen"
+            content_class = CLASS_MAP.get(class_name, RingScreen)
 
             self.content_widget = content_class({"state": "normal"})
             self.content_widget.setSizePolicy(
@@ -62,24 +71,6 @@ class ScreenWindow(QMainWindow):
                 QSizePolicy.Policy.Expanding
             )
             self.stack.addWidget(self.content_widget)
-
-
-    def update_robot_state(self, new_state):
-        self.robot_state = new_state
-
-        if self.num_screens == 2 and self.screen_index == 1:
-            if new_state in {"normal", "task_finished"}:
-                self.restart_alternating_timer()
-            else:
-                self.stop_alternating_timer()
-                self.stack.setCurrentWidget(self.screen2_widget)
-
-
-    def restart_alternating_timer(self):
-        self.stop_alternating_timer()
-        self.current_screen_state = 0
-        self.stack.setCurrentIndex(self.current_screen_state)
-        self.start_alternating_timer()
 
     def start_alternating_timer(self):
         self.alternating_timer = QTimer(self)
@@ -90,20 +81,36 @@ class ScreenWindow(QMainWindow):
         if hasattr(self, 'alternating_timer') and self.alternating_timer.isActive():
             self.alternating_timer.stop()
 
+    def restart_alternating_timer(self):
+        self.stop_alternating_timer()
+        self.current_screen_state = 0
+        self.stack.setCurrentIndex(self.current_screen_state)
+        self.start_alternating_timer()
 
     def toggle_screen_content(self):
         if self.robot_state in {"normal", "task_finished"}:
             self.current_screen_state = 1 - self.current_screen_state
             self.stack.setCurrentIndex(self.current_screen_state)
         else:
-            self.stack.setCurrentWidget(self.screen2_widget)
-            self.screen2_widget.set_state({"state": self.robot_state})
+            self.stack.setCurrentIndex(0)
+        if hasattr(self.alt_widget_0, "update_state"):
+            self.alt_widget_0.update_state({"state": self.robot_state})
 
+    def update_robot_state(self, new_state):
+        self.robot_state = new_state
+
+        if hasattr(self, 'alt_widget_0'):
+            if new_state in {"normal", "task_finished"}:
+                self.restart_alternating_timer()
+            else:
+                self.stop_alternating_timer()
+                self.stack.setCurrentIndex(0)
+                if hasattr(self.alt_widget_0, "update_state"):
+                    self.alt_widget_0.update_state({"state": new_state})
 
     def get_active_content_widget(self):
-        # Return whichever widget is currently visible
-        if self.num_screens == 2 and self.screen_index == 1:
-            return self.screen0_widget if self.current_screen_state == 1 else self.screen2_widget
+        if hasattr(self, 'alt_widget_0'):
+            return self.alt_widget_1 if self.current_screen_state == 1 else self.alt_widget_0
         return getattr(self, "content_widget", None)
 
     def keyPressEvent(self, event):
