@@ -31,7 +31,7 @@ def main():
         app.quit()
 
     def closeEvent(self, event):
-        self.serial_reader.stop()
+        serial_reader.stop()
         super().closeEvent(event)
     
     bg_window, screen_windows, ring_widget = launch_ui(app, client, handle_escape)

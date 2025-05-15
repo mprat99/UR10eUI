@@ -14,7 +14,7 @@ class RingState:
 
 NORMAL_STATE = RingState((0, 255, 0), 3000, 6000, 0.05, 4000.0, 0.1, 0.9)
 WARNING_STATE = RingState((255, 255, 0), 2000, 5000, 0.07, 5000.0, 0.15, 0.85)
-ERROR_STATE = RingState((255, 0, 0), 1500, 1000, 0.1, 6000.0, 0.2, 0.8)
+ERROR_STATE = RingState((255, 0, 0), 1000, 1000, 0.1, 6000.0, 0.2, 0.8)
 IDLE_STATE = RingState((0, 0, 255), 3000, 6000, 0.05, 4000.0, 0.1, 0.9)
 
 class Ring:
@@ -122,6 +122,8 @@ class RingWidget(QWidget):
             self.new_ring_timer.stop()
             self.new_ring_timer.setInterval(self.state.frequency)
             self.new_ring_timer.start()
+
+        self.createNewRing()
 
     def resizeEvent(self, event):
         if not self.center_point:
