@@ -1,5 +1,6 @@
 import sys
 from PyQt6.QtWidgets import QApplication
+from PyQt6.QtCore import Qt
 from network.tcp_client import TCPClient
 from network.uart_client import UARTClient
 from config.settings import CLIENT_TYPE, ROTATION_FROM_IMU
@@ -38,11 +39,21 @@ def main():
 
     # Create and connect UI controller
     controller = UIController(ring_widget, screen_windows)
-    client.message_received.connect(controller.handle_message)
+    client.message_received.connect(
+                controller.handle_message,
+                type=Qt.ConnectionType.QueuedConnection
+            )
 
     if ROTATION_FROM_IMU:
-        serial_reader.rotation_received.connect(controller.handle_rotation_serial)
-        serial_reader.state_received.connect(controller.handle_state_serial)
+        serial_reader.rotation_received.connect(
+            controller.handle_rotation_serial,
+            type=Qt.ConnectionType.QueuedConnection
+        )
+
+        serial_reader.state_received.connect(
+            controller.handle_state_serial,
+            type=Qt.ConnectionType.QueuedConnection
+        )
         serial_reader.start()
         
     app.exec()
