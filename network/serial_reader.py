@@ -14,6 +14,7 @@ class SerialReader(QThread):
         self.running = True
         self.reconnect_delay = 2  # seconds
         self.watchdog_timeout = 0.5  # seconds without data before reconnect
+        self._last_state_emit_time = 0.0
 
     def run(self):
         while self.running:
@@ -53,7 +54,10 @@ class SerialReader(QThread):
                             try:
                                 state = int(value)
                                 if state in {1, 2, 3}:
-                                    self.state_received.emit(state)
+                                    current_time = time.time()
+                                    if current_time - self._last_state_emit_time >= 0.9:
+                                        self._last_state_emit_time = current_time
+                                        self.state_received.emit(state)
                             except ValueError:
                                 continue
 
