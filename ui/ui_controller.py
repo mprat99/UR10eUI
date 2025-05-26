@@ -85,7 +85,6 @@ class UIController:
                     for screen in self.screen_windows:
                         for widget in self._get_all_screen_widgets(screen):
                             if isinstance(widget, DualScreenWidget):
-                                # Determine which subwidget is a BarChartInfoScreen and force show it
                                 if isinstance(widget.widget_0, BarChartInfoScreen):
                                     widget.layout.setCurrentWidget(widget.widget_0)
                                     widget.widget_0.update_state({"state": state})

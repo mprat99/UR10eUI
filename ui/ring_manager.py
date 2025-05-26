@@ -69,7 +69,7 @@ class RingManager(QObject):
         else:
             self.state = IDLE_STATE
 
-        self.rings = self.rings[:-1]  # remove newest ring to sync state
+        self.rings = self.rings[:-1]
         for ring in self.rings:
             ring.state.speed = self.state.speed
         self.new_ring_timer.stop()
