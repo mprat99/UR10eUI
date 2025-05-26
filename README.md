@@ -17,10 +17,7 @@ A **PyQt6-based user interface** for monitoring and interacting with a UR10e rob
 ## 🗂 Project Structure
 
 ```
-## 🗂 Project Structure
-
-```
-SSM-UI/
+SSM_UI/
 ├── dev.py
 ├── main.py
 ├── README.md
