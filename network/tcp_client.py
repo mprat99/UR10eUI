@@ -3,7 +3,7 @@ from PyQt6.QtCore import QObject, pyqtSignal, QTimer
 from PyQt6.QtNetwork import QTcpSocket, QAbstractSocket
 from config.settings import TCP_HOST, TCP_PORT, TCP_MESSAGE_DELIMITER   
 
-RECONNECT_INTERVAL = 5000  # milliseconds
+RECONNECT_INTERVAL = 5000
 
 class TCPClient(QObject):
     message_received = pyqtSignal(dict)
@@ -17,10 +17,8 @@ class TCPClient(QObject):
         self.socket.errorOccurred.connect(self._on_error)
         self.socket.disconnected.connect(self._on_disconnected)
 
-        # Simplified buffer to accumulate data
         self._buffer = bytearray()
         
-        # Reconnection timer setup
         self.reconnect_timer = QTimer(self)
         self.reconnect_timer.setInterval(RECONNECT_INTERVAL)
         self.reconnect_timer.timeout.connect(self._attempt_reconnect)
@@ -36,24 +34,18 @@ class TCPClient(QObject):
 
     def _on_ready_read(self):
         """Handle incoming data as \r-separated JSON messages with proper buffer management."""
-        # Append new data to buffer (keep as bytes)
         self._buffer += self.socket.readAll().data()
         
-        # Process all complete messages (ending with \r)
         while True:
-            # Find the first \r delimite
-            # r
+
             pos = self._buffer.find(TCP_MESSAGE_DELIMITER)
             if pos == -1:
-                break  # No complete messages remaining
+                break
                 
-            # Extract message bytes (excluding the \r)
             msg_bytes = self._buffer[:pos]
-            # Remove processed bytes (including \r) from buffer
             self._buffer = self._buffer[pos+1:]
             
             try:
-                # Decode and parse JSON
                 message = json.loads(msg_bytes.decode('utf-8'))
                 self.message_received.emit(message)
             except UnicodeDecodeError:

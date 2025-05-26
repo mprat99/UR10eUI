@@ -112,7 +112,7 @@ class RingWidget(QWidget):
             self.state = WARNING_STATE
         elif state in ["stopped", "error"]:
             self.state = ERROR_STATE
-        else:  # idle, task_finished, etc
+        else: 
             self.state = IDLE_STATE
         
         if hasattr(self, 'new_ring_timer'):

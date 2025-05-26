@@ -1,18 +1,17 @@
 from PyQt6.QtWidgets import (
-    QWidget, QGraphicsView, QGraphicsScene,
-    QGraphicsRectItem, QSizePolicy, QGraphicsProxyWidget
+    QGraphicsView, QGraphicsScene,
+    QGraphicsRectItem, QSizePolicy
 )
 from PyQt6.QtGui import (
-    QFont, QColor, QLinearGradient, QBrush, QPen, QPainter
+    QFont, QColor, QLinearGradient, QBrush
 )
 from PyQt6.QtCore import (
     Qt, QTimer, QPropertyAnimation, pyqtProperty, QObject, QPointF, QEasingCurve
 )
-from config.settings import GREEN_COLOR, YELLOW_COLOR, RED_COLOR, BLUE_COLOR
+from config.settings import GREEN_COLOR, YELLOW_COLOR, RED_COLOR
 import random
 import utils.utils as utils
 
-# ----------------- Helper Classes -----------------
 class BarData:
     def __init__(self, label: str, value: float, formatted: str, color: QColor):
         self.label = label
@@ -21,7 +20,6 @@ class BarData:
         self.color = color
 
 
-# ----------------- Animated Items -----------------
 class AnimatedBar(QObject):
     """
     This class wraps a QGraphicsRectItem and exposes a property 'value' that, when updated,
@@ -38,7 +36,6 @@ class AnimatedBar(QObject):
     def set_value(self, value):
         self._value = value
         rect = self.rect_item.rect()
-        # Update only the width while keeping other properties constant.
         self.rect_item.setRect(rect.x(), rect.y(), value, rect.height())
 
     value = pyqtProperty(float, get_value, set_value)
@@ -64,30 +61,24 @@ class AnimatedTextItem(QObject):
     pos = pyqtProperty(QPointF, get_pos, set_pos)
 
 
-# ----------------- Bar Chart & Animation -----------------
 class BarChartView(QGraphicsView):
     def __init__(self):
         super().__init__()
-        # Expand the widget in its layout.
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.setStyleSheet("background: transparent; border: 0px;")
         self.scene = QGraphicsScene(self)
         self.setScene(self.scene)
 
-        # Fixed design canvas (300x300) for item layout.
         self.design_size = 300
         self.scene.setSceneRect(0, 0, self.design_size, self.design_size)
 
-        # Statistic text displayed above the chart.
         self.stat_metric = "Avg. Speed"
         self.stat_value = "0"
         self.stat_units = "pick/min"
 
-        # Chart units and colors for the bars.
         self.chart_units = "min"
         self.default_colors = [QColor(GREEN_COLOR), QColor(YELLOW_COLOR), QColor(RED_COLOR)]
 
-        # Data storage for bars: raw data (list of dicts) and display data (BarData objects).
         self.bar_data = []         # Raw data received (list of dicts with keys 'label' and 'value')
         self.bar_display_data = [] # List[BarData]
         self.bar_items = []        # Visual items: tuple(AnimatedBar, target_value, label_item, formatted_value_item)
@@ -95,14 +86,12 @@ class BarChartView(QGraphicsView):
         self.title_item = None
         self.subtitle_item = None
 
-        # Layout parameters relative to design_size.
         self.bar_max_width = self.design_size * 0.55
         self.bar_height = 20
         self.bar_x_offset = self.design_size / 2 - self.bar_max_width / 2 - 20
         self.y_start = self.design_size / 2 - 50
         self.spacing = 50
 
-        # Simulate initial data reception.
         sample_data = {
             "chart": {
                 "units": "sec",
@@ -118,9 +107,6 @@ class BarChartView(QGraphicsView):
         }
         self.receive_data(sample_data)
         QTimer.singleShot(200, self._animate_bars)
-
-        # QTimer.singleShot(6000, lambda: self.receive_data(sample_data))
-        # QTimer.singleShot(6200, self._animate_bars)
 
 
     def receive_data(self, data: dict):
@@ -146,7 +132,6 @@ class BarChartView(QGraphicsView):
         title_text = self.stat_metric
         subtitle_text = f"{self.stat_value} {self.stat_units}"
 
-        # Create or update title item.
         if not self.title_item:
             self.title_item = self.scene.addText(title_text, QFont("DM Sans", 18, QFont.Weight.Bold))
             self.title_item.setDefaultTextColor(Qt.GlobalColor.white)
@@ -155,7 +140,6 @@ class BarChartView(QGraphicsView):
         title_rect = self.title_item.boundingRect()
         self.title_item.setPos(self.design_size / 2 - title_rect.width() / 2, 20)
 
-        # Create or update subtitle item.
         if not self.subtitle_item:
             self.subtitle_item = self.scene.addText(subtitle_text, QFont("DM Sans", 16, QFont.Weight.Normal))
             self.subtitle_item.setDefaultTextColor(Qt.GlobalColor.white)
@@ -178,12 +162,10 @@ class BarChartView(QGraphicsView):
                 formatted_value = utils.format_time_sec(value)
             else:
                 formatted_value = f"{value} {self.chart_units}"
-            # Use default color if available, otherwise random.
             color = self.default_colors[i] if i < len(self.default_colors) else QColor(
                 random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
             new_display_data.append(BarData(label, value, formatted_value, color))
 
-        # Recreate bars if number or order of labels changes.
         if len(new_display_data) != len(self.bar_display_data) or any(
             new_display_data[i].label != self.bar_display_data[i].label for i in range(len(new_display_data))
         ):
@@ -193,7 +175,6 @@ class BarChartView(QGraphicsView):
         else:
             self.bar_display_data = new_display_data
             QTimer.singleShot(50, self._animate_bars)
-            # Update formatted text for existing animated bars.
             for i, (animated_bar, target_value, label_item, formatted_value_item) in enumerate(self.bar_items):
                 _, new_value, new_formatted, _ = new_display_data[i].__dict__.values()
                 self.bar_items[i] = (animated_bar, new_value, label_item, formatted_value_item)
@@ -203,35 +184,29 @@ class BarChartView(QGraphicsView):
         """
         Remove old bar items and create new ones based on the processed display data.
         """
-        # Remove previous bar visual items.
         for animated_bar, _, label_item, formatted_value_item in self.bar_items:
             self.scene.removeItem(animated_bar.rect_item)
             self.scene.removeItem(label_item)
             self.scene.removeItem(formatted_value_item)
         self.bar_items.clear()
 
-        # Create new bar items.
         for i, bar in enumerate(self.bar_display_data):
             y = self.y_start + 20 + i * self.spacing
 
-            # Create gradient for the bar.
             gradient = QLinearGradient(0, 0, self.bar_max_width, 0)
             darker_color = bar.color.darker(200)
             gradient.setColorAt(0, darker_color)
             gradient.setColorAt(1, bar.color)
 
-            # Create the bar rectangle item with initial width 0.
             rect_item = QGraphicsRectItem(self.bar_x_offset, y, 0, self.bar_height)
             rect_item.setBrush(QBrush(gradient))
             rect_item.setPen(Qt.GlobalColor.transparent)
             self.scene.addItem(rect_item)
 
-            # Create label text item.
             label_item = self.scene.addText(bar.label, QFont("DM Sans", 12))
             label_item.setDefaultTextColor(Qt.GlobalColor.white)
             label_item.setPos(self.bar_x_offset - 4, y - 25)
 
-            # Create formatted value text item.
             formatted_value_item = self.scene.addText(bar.formatted, QFont("DM Sans", 10))
             formatted_value_item.setDefaultTextColor(Qt.GlobalColor.white)
             formatted_value_item.setPos(self.bar_x_offset + 5, y - self.bar_height / 8)
@@ -245,14 +220,11 @@ class BarChartView(QGraphicsView):
         """
         if not self.bar_items:
             return
-        # Determine the maximum value to normalize widths.
         max_value = max(value for _, value, _, _ in self.bar_items)
         for i, (animated_bar, value, _, formatted_value_item) in enumerate(self.bar_items):
             y = self.y_start + 20 + i * self.spacing
-            # Calculate target width using normalized value.
             target_width = (value / max_value) * self.bar_max_width
 
-            # Animate the bar width.
             anim = QPropertyAnimation(animated_bar, b"value")
             anim.setEasingCurve(QEasingCurve.Type.OutCubic)
             anim.setDuration(1000)
@@ -260,7 +232,6 @@ class BarChartView(QGraphicsView):
             anim.setEndValue(target_width)
             anim.start()
 
-            # Animate the formatted value's position so it follows the end of the bar.
             animated_text = AnimatedTextItem(formatted_value_item)
             anim_text = QPropertyAnimation(animated_text, b"pos")
             anim_text.setEasingCurve(QEasingCurve.Type.OutCubic)
@@ -271,7 +242,6 @@ class BarChartView(QGraphicsView):
             anim_text.setEndValue(end_pos)
             anim_text.start()
 
-            # Store references to prevent garbage collection.
             animated_bar.animation = anim
             animated_text.animation = anim_text
 

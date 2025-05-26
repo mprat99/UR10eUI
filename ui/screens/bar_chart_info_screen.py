@@ -13,7 +13,6 @@ from ..widgets.info_widget import InfoWidget
 from utils.enums import State
 
 
-# ----------------- Screen -----------------
 class BarChartInfoScreen(QWidget):
     def __init__(self, init_config):
         super().__init__()
@@ -27,36 +26,20 @@ class BarChartInfoScreen(QWidget):
         self.stacked_widget.setStyleSheet("background: transparent; border: 0px;")
         self.stacked_widget.setFixedSize(300, 300)
 
-        # Create the bar chart view.
         self.chart_view = BarChartView()
         self.chart_view.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.chart_view.show()
         self.info_widget = InfoWidget()
         self.info_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
-        # Add them to the stacked widget
         self.stacked_widget.addWidget(self.chart_view)
         self.stacked_widget.addWidget(self.info_widget)
 
-        # Wrap the stacked widget in a single RotatableContainer
         self.rot_container = RotatableContainer(self.stacked_widget)
 
         self.layout.addWidget(self.rot_container)
         
-
-        # Animation properties
-        self._opacity = 1.0
-        self._scale = 1.05
         self._rotation = 0.0
-
-        # # Animations setup
-        # self.opacity_anim = QPropertyAnimation(self, b"opacity")
-        # self.opacity_anim.setDuration(1500)
-        # self.opacity_anim.setEasingCurve(QEasingCurve.Type.OutQuad)
-
-        # self.scale_anim = QPropertyAnimation(self, b"scale")
-        # self.scale_anim.setDuration(1500)
-        # self.scale_anim.setEasingCurve(QEasingCurve.Type.OutQuad)
 
         self.rotate_anim = QPropertyAnimation(self, b"rotation")
         self.rotate_anim.setEasingCurve(QEasingCurve.Type.OutQuad)

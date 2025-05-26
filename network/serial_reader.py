@@ -12,8 +12,8 @@ class SerialReader(QThread):
         self.port = port
         self.baudrate = baudrate
         self.running = True
-        self.reconnect_delay = 2  # seconds
-        self.watchdog_timeout = 0.5  # seconds without data before reconnect
+        self.reconnect_delay = 2 
+        self.watchdog_timeout = 0.5
         self._last_state_emit_time = 0.0
 
     def run(self):
@@ -24,7 +24,6 @@ class SerialReader(QThread):
                     last_data_time = time.time()
 
                     while self.running:
-                        # Watchdog: check if data has stopped flowing
                         if time.time() - last_data_time > self.watchdog_timeout:
                             print("[IMU] Watchdog timeout: no data received in 10 seconds. Reconnecting...")
                             raise serial.SerialException("Watchdog timeout")
