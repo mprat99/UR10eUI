@@ -17,24 +17,38 @@ A **PyQt6-based user interface** for monitoring and interacting with a UR10e rob
 ## 🗂 Project Structure
 
 ```
-ssm_ui/
-├── main.py                   # Application entry point
-├── dev.py                    # Development launcher with auto-restart
-├── README.md                 # Project documentation
-├── requirements.txt          # Python dependencies
+## 🗂 Project Structure
+
+```
+SSM-UI/
+├── dev.py
+├── main.py
+├── README.md
+├── requirements.txt
+│
+├── assets/                 
+│
 ├── config/
-│   └── settings.py           # Configuration and runtime options
-├── ui/
-│   ├── main_window.py        # Main application window
-│   ├── ring_widget.py        # Ring animation widget
-│   └── section_widget.py     # Additional UI sections
+│   └── settings.py          
+│
 ├── network/
-│   └── tcp_client.py         # TCP client implementation
-└── utils/
-    └── helpers.py            # Utility functions
+│   ├── serial_reader.py
+│   └── tcp_client.py
+│
+├── ui/
+│   ├── ring_manager.py
+│   ├── screen_window.py
+│   ├── ui_controller.py
+│   ├── ui_setup.py
+│   │
+│   ├── screens/
+│   │
+│   └── widgets/
+├── utils/
+│   ├── enums.py
+│   └── utils.py
 ```
 
----
 
 ## ⚙️ Setup Instructions
 
