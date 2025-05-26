@@ -4,10 +4,9 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import (
     QColor,QPen, QPainter
 )
-from PyQt6.QtCore import (Qt, QPropertyAnimation, pyqtProperty, QEasingCurve)
+from PyQt6.QtCore import Qt
 
 
-# ----------------- Rotatable Container -----------------
 class RotatableContainer(QGraphicsView):
     """
     A container that wraps a widget in a QGraphicsProxyWidget so it can be rotated.
@@ -19,7 +18,6 @@ class RotatableContainer(QGraphicsView):
         self.scene = QGraphicsScene(self)
         self.setScene(self.scene)
 
-        # Unparent the widget if necessary.
         if widget.parent() is not None:
             widget.setParent(None)
 
@@ -28,12 +26,10 @@ class RotatableContainer(QGraphicsView):
         self.draw_border = draw_border
         self.border_color = border_color
 
-        # Set the transform origin and initial rotation.
         self.proxy.setTransformOriginPoint(self.proxy.boundingRect().center())
         self.proxy.setRotation(rotation)
         self.scene.addItem(self.proxy)
 
-        # Disable scrollbars.
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         
@@ -46,7 +42,7 @@ class RotatableContainer(QGraphicsView):
         """
         if self.draw_border:
             painter.save()
-            painter.resetTransform()  # Draw in view coordinates.
+            painter.resetTransform()
             painter.setPen(QPen(self.border_color, 1))
             diameter = int(min(self.width(), self.height()))
             x = int((self.width() - diameter) / 2)

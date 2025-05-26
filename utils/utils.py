@@ -28,5 +28,14 @@ def format_time_sec(seconds):
         return f"{minutes}m {remaining}s" if remaining else f"{minutes}min"
     else:
         hours = seconds // 3600
-        return f"{hours}h"
+        minutes = (seconds % 3600) // 60
+        remaining = seconds % 60
+
+        parts = [f"{hours}h"]
+        if minutes:
+            parts.append(f"{minutes}m")
+        if remaining:
+            parts.append(f"{remaining}s")
+        return " ".join(parts)
+
     
